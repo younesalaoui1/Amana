@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quiz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --sky1:#7FD6F7; --sky2:#E3F7FF; --stem:#3E9B3A; --sun:#FFC83D; --ink:#173B2A;
+  --a:#FF8A3D; --b:#7B61FF; --c:#12A89C; --ok:#27AE60; --warn:#F2994A; --late:#E5484D;
+  --font:"Andika","Verdana","Trebuchet MS",sans-serif;
+}
+html[lang="ar"]{--font:"Tajawal","Segoe UI","Tahoma","Arial",sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:var(--font);color:var(--ink);overflow:hidden;
+  background:linear-gradient(180deg,var(--sky1) 0%,var(--sky2) 70%,#CDEFB4 70%,#9ADB78 100%)}
+button{font-family:inherit;cursor:pointer;color:inherit}
+button:focus-visible{outline:5px solid var(--ink);outline-offset:3px}
+[hidden]{display:none!important}
+#app{display:grid;grid-template-columns:clamp(64px,6.5vw,120px) 1fr;height:100vh;height:100dvh}
+
+/* Tige de progression */
+#progress{position:relative}
+#pstem{position:absolute;left:50%;bottom:10%;width:9px;margin-left:-4.5px;border-radius:6px;background:var(--stem);transition:height .8s ease}
+.pleaf{position:absolute;width:44%;aspect-ratio:2/1;border:0;background:none;padding:0;transform:scale(0);transition:transform .6s cubic-bezier(.3,1.6,.5,1)}
+.pleaf.l{right:50%;transform-origin:100% 50%}
+.pleaf.r{left:50%;transform-origin:0 50%}
+.pleaf svg{width:100%;height:100%;display:block}
+.pleaf.l svg{transform:scaleX(-1)}
+.pleaf.grown{transform:scale(1)}
+.pleaf.current{transform:scale(1.3)}
+.pleaf.current svg path{fill:var(--sun)}
+#ppot{position:absolute;left:50%;bottom:1.5%;width:62%;transform:translateX(-50%)}
+#pflower{position:absolute;left:50%;bottom:86%;width:60%;transform:translateX(-50%) scale(0);transition:transform .8s cubic-bezier(.3,1.6,.5,1)}
+#pflower.bloom{transform:translateX(-50%) scale(1)}
+
+#stage{min-width:0;padding:2.2vh 2.4vw 2vh 1vw;display:flex;flex-direction:column}
+html[dir="rtl"] #stage{padding:2.2vh 1vw 2vh 2.4vw}
+.view{flex:1;min-height:0;display:flex;flex-direction:column}
+.top{display:flex;align-items:center;gap:1.2vw;margin-bottom:1.6vh}
+.qnum{background:var(--ink);color:#fff;font-weight:700;font-size:clamp(18px,1.9vw,34px);padding:.35em .9em;border-radius:999px}
+.chip{font-weight:700;font-size:clamp(16px,1.6vw,30px);padding:.35em .9em;border-radius:999px;background:#fff;border:3px solid currentColor}
+.chip.qcm{color:#5A3FD9}.chip.vf{color:#C0561A}.chip.id{color:#0E7F76}
+.spacer{flex:1}
+.timer{display:flex;align-items:center;gap:.8vw}
+.ring{position:relative;width:clamp(64px,8.5vh,110px);aspect-ratio:1}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:9}
+.ring .bg{stroke:rgba(255,255,255,.8)}
+.ring .fg{stroke:#4FB23A;stroke-linecap:round;transition:stroke-dashoffset 1s linear,stroke .3s}
+.ring.soon .fg{stroke:var(--warn)}
+.ring.over .fg{stroke:var(--late)}
+.ring span{position:absolute;inset:0;display:grid;place-items:center;font-weight:700;font-size:clamp(20px,2.4vw,40px)}
+.ring.over span{color:var(--late);animation:shake .5s 2}
+.tbtn{border:3px solid var(--ink);background:#fff;border-radius:14px;font-weight:700;font-size:clamp(14px,1.2vw,22px);padding:.4em .8em}
+
+.content{flex:1;min-height:0;display:grid;grid-template-columns:1.05fr 1fr;gap:2.4vw}
+.art{min-height:0;background:rgba(255,255,255,.6);border:5px solid #fff;border-radius:36px;display:flex;align-items:center;justify-content:center;padding:1.5vh 1vw;overflow:hidden}
+.art svg{width:100%;height:100%;max-height:70vh}
+.right{min-height:0;display:flex;flex-direction:column;justify-content:center;gap:2.2vh}
+.qtext{font-size:clamp(26px,3vw,58px);font-weight:700;line-height:1.2;max-width:27ch}
+.qtext.long{font-size:clamp(22px,2.45vw,48px);max-width:30ch}
+.answers{display:grid;gap:1.5vh}
+.answers.vf{grid-template-columns:1fr 1fr;gap:1.5vw}
+.opt{display:flex;align-items:center;gap:.8em;background:#fff;border-radius:22px;padding:.45em .7em;font-size:clamp(20px,2.2vw,42px);border:5px solid transparent;box-shadow:0 7px 0 rgba(23,59,42,.18);transition:opacity .4s,transform .4s,border-color .4s}
+.opt .letter{flex:none;width:1.7em;height:1.7em;border-radius:50%;color:#fff;display:grid;place-items:center;font-weight:700}
+.answers.vf .opt{justify-content:center;font-weight:700;font-size:clamp(28px,3.2vw,60px);padding:.6em .4em}
+.opt.correct{border-color:var(--ok);transform:scale(1.05);animation:pop .6s}
+.opt.correct::after{content:"";flex:none;margin-inline-start:auto;width:1.3em;height:1.3em;border-radius:50%;
+  background:var(--ok) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5' fill='none' stroke='white' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/70% no-repeat}
+.answers.vf .opt.correct::after{margin-inline-start:.4em}
+.opt.dim{opacity:.3}
+.idbox{background:#fff;border:5px dashed #4FB23A;border-radius:26px;text-align:center;font-weight:700;font-size:clamp(30px,4vw,76px);padding:.3em .4em;color:#9BB8A5;letter-spacing:.2em}
+.idbox.shown{border-style:solid;border-color:var(--ok);color:#2E8B3E;letter-spacing:0;animation:pop .6s}
+
+.guide{display:flex;align-items:flex-end;gap:1vw}
+.zit{width:clamp(80px,9vw,160px);flex:none;animation:bob 3s ease-in-out infinite;overflow:visible}
+.zit .happy-only{display:none}
+.happy .zit .happy-only{display:inline}
+.happy .zit .normal-only{display:none}
+.happy .zit{animation:jump .55s ease 2}
+.bubble{position:relative;background:#fff;border-radius:24px;padding:.6em .9em;font-size:clamp(17px,1.7vw,32px);line-height:1.3;box-shadow:0 6px 0 rgba(23,59,42,.15);margin-bottom:3vh;max-width:30ch}
+.bubble::before{content:"";position:absolute;left:-14px;bottom:18px;border:10px solid transparent;border-right:16px solid #fff;border-left:0}
+html[dir="rtl"] .bubble::before{left:auto;right:-14px;border-right:0;border-left:16px solid #fff}
+.bubble b{display:block;color:#2E8B3E;font-size:.8em}
+.happy .bubble{outline:5px solid var(--sun)}
+
+.controls{display:flex;align-items:center;gap:1vw;margin-top:1.8vh;flex-wrap:wrap}
+.btn{border:0;border-radius:18px;font-weight:700;font-size:clamp(16px,1.5vw,28px);padding:.55em 1.1em;background:#fff;box-shadow:0 6px 0 rgba(23,59,42,.2)}
+.btn:active{transform:translateY(3px);box-shadow:0 3px 0 rgba(23,59,42,.2)}
+.btn.reveal{background:var(--sun);font-size:clamp(20px,1.9vw,36px);padding:.5em 1.4em}
+.btn.reveal:disabled{background:#E7E2C8;color:#7C8A7F;cursor:default}
+.btn.next{background:var(--ink);color:#fff}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.small{font-size:clamp(13px,1.1vw,20px);padding:.5em .8em}
+
+.center{flex:1;display:grid;grid-template-columns:auto 1fr;align-items:center;gap:3vw;padding:0 3vw}
+.center .zit{width:clamp(150px,20vw,340px)}
+h1{font-size:clamp(32px,4.2vw,84px);line-height:1.1;margin-bottom:.3em}
+.sub{font-size:clamp(18px,2vw,36px);margin-bottom:1.2em}
+.howto{background:rgba(255,255,255,.75);border-radius:24px;padding:1em 1.3em;font-size:clamp(15px,1.35vw,24px);line-height:1.45;max-width:44em;margin-bottom:1.2em}
+.howto ol{padding-inline-start:1.3em}
+.howto p{margin-top:.5em;color:#3E5A4A}
+.setting{display:flex;align-items:center;gap:.7em;flex-wrap:wrap;font-size:clamp(16px,1.5vw,28px);font-weight:700;margin-bottom:1.1em}
+.seg{border:3px solid var(--ink);background:#fff;border-radius:999px;padding:.25em .9em;font-weight:700;font-size:inherit}
+.seg[aria-pressed="true"]{background:var(--ink);color:#fff}
+.btn.start{background:var(--sun);font-size:clamp(22px,2.3vw,44px);padding:.5em 1.4em}
+.recap{flex:1;min-height:0;display:grid;grid-template-columns:auto 1fr;gap:3vw;align-items:center;padding:0 2vw}
+.recap .zit{width:clamp(130px,16vw,280px)}
+.recap h2{font-size:clamp(28px,3.4vw,64px);margin-bottom:.5em}
+.points{display:grid;grid-template-columns:1fr 1fr;gap:1.4vw;margin-bottom:2.5vh}
+.point{background:#fff;border-radius:24px;padding:.6em .8em;display:flex;align-items:center;gap:.6em;font-weight:700;font-size:clamp(17px,1.8vw,34px);box-shadow:0 6px 0 rgba(23,59,42,.15);line-height:1.25}
+.point i{flex:none;font-style:normal;width:1.7em;height:1.7em;border-radius:50%;color:#fff;display:grid;place-items:center}
+.recap .bubble{max-width:40ch}
+
+.fall{position:fixed;top:-60px;width:28px;height:28px;pointer-events:none;z-index:50;animation:fall linear forwards}
+
+/* Classes d'animation utilisables dans les illustrations */
+.art svg .float{animation:floaty 2.6s ease-in-out infinite}
+.art svg .bounce{animation:bouncy 1.4s ease-in-out infinite}
+.art svg .spin{transform-box:fill-box;transform-origin:center;animation:spin 8s linear infinite}
+.art svg .pulse{transform-box:fill-box;transform-origin:center;animation:pulse 1.6s ease-in-out infinite}
+.art svg .sway{transform-box:fill-box;transform-origin:50% 100%;animation:sway 3.5s ease-in-out infinite}
+.art svg .blink{animation:glow .7s ease-in-out infinite alternate}
+.art svg .reveal-only{opacity:0}
+.art.revealed svg .reveal-only{opacity:1;transform-box:fill-box;transform-origin:center;animation:pop .7s both}
+.art svg .hide-on-reveal{transition:opacity .5s}
+.art.revealed svg .hide-on-reveal{opacity:0}
+.art .emoji{font-size:170px}
+
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes bouncy{0%,100%{transform:translateY(0)}40%{transform:translateY(-18px)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+@keyframes sway{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
+@keyframes glow{from{opacity:1;filter:drop-shadow(0 0 3px #fff) drop-shadow(0 0 10px #FFE45C)}to{opacity:.5;filter:none}}
+@keyframes pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.08);opacity:1}100%{transform:scale(1);opacity:1}}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes jump{0%,100%{transform:translateY(0)}40%{transform:translateY(-22px) rotate(-4deg)}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+@keyframes fall{to{transform:translate(var(--drift),110vh) rotate(var(--rot))}}
+/* Impression */
+.btn.print{background:#fff;border:3px solid var(--ink)}
+#printModal{position:fixed;inset:0;background:rgba(23,59,42,.55);display:grid;place-items:center;z-index:100}
+#printModal .box{background:#fff;border-radius:28px;padding:28px 32px;max-width:560px;width:92%;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+#printModal h3{font-size:clamp(22px,2vw,32px);margin-bottom:16px}
+#printModal .choices{display:grid;gap:12px;margin-bottom:18px}
+#printModal .choice{text-align:start;border:3px solid var(--ink);background:#fff;border-radius:18px;padding:.7em 1em;font-weight:700;font-size:clamp(17px,1.4vw,24px)}
+#printModal .choice small{display:block;font-weight:400;font-size:.75em;color:#4F6B5B}
+#printModal .choice:hover{background:#FFF6D6}
+#printArea{display:none}
+.p-sheet{color:#173B2A;font-family:var(--font);font-size:12.5pt;line-height:1.35}
+.p-head{display:flex;align-items:flex-start;gap:5mm;border-bottom:1mm solid #FFC83D;padding-bottom:3mm;margin-bottom:5mm}
+.p-head .zit{width:18mm;animation:none}
+.p-head h1{font-size:19pt;margin:0 0 1mm}
+.p-head p{font-size:11pt;color:#4F6B5B}
+.p-fields{display:flex;gap:6mm;flex-wrap:wrap;margin:0 0 5mm;font-weight:700}
+.p-fields span{flex:1;min-width:40mm;border-bottom:.4mm dotted #173B2A;padding-bottom:1mm}
+.p-q{display:grid;grid-template-columns:58mm 1fr;gap:5mm;align-items:center;break-inside:avoid;page-break-inside:avoid;border:.5mm solid #CFE3D6;border-radius:5mm;padding:3.5mm;margin-bottom:4mm}
+.p-q svg{width:100%;height:auto;display:block;border-radius:3mm;background:#F3FAFF}
+.p-num{display:inline-grid;place-items:center;width:8mm;height:8mm;border-radius:50%;background:#173B2A;color:#fff;font-weight:700;margin-inline-end:2mm;font-size:11pt}
+.p-text{font-weight:700;font-size:13.5pt;margin-bottom:3mm}
+.p-opts{display:grid;gap:2mm}
+.p-opt{display:flex;align-items:center;gap:3mm}
+.p-opt i{flex:none;width:5mm;height:5mm;border:.5mm solid #173B2A;border-radius:50%}
+.p-opt b{flex:none;width:7mm;height:7mm;border-radius:50%;color:#fff;display:grid;place-items:center;font-size:10pt}
+.p-vf{display:flex;gap:10mm}
+.p-line{border-bottom:.4mm dotted #173B2A;height:9mm}
+.p-sheet .reveal-only{display:none}
+.p-key table{width:100%;border-collapse:collapse;font-size:11.5pt}
+.p-key th,.p-key td{border:.4mm solid #CFE3D6;padding:2mm 2.5mm;text-align:start;vertical-align:top}
+.p-key th{background:#F1FAEC}
+.p-key td.ok{font-weight:700;color:#1E7F3E;white-space:nowrap}
+.p-key h2{font-size:15pt;margin:6mm 0 3mm}
+.p-key ul{padding-inline-start:6mm}
+.p-break{break-before:page;page-break-before:always}
+@media print{
+  @page{size:A4;margin:12mm}
+  html,body{height:auto;background:#fff!important;overflow:visible!important}
+  #app,#printModal,.fall{display:none!important}
+  #printArea{display:block}
+  *{animation:none!important;transition:none!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+@media (max-width:820px){.content,.recap,.center{grid-template-columns:1fr}body{overflow:auto}}
+</style>
+</head>
+<body>
+<div id="app">
+  <nav id="progress">
+    <div id="pstem"></div>
+    <div id="pleaves"></div>
+    <svg id="pflower" viewBox="-40 -40 80 80" aria-hidden="true">
+      <g fill="#FF5E8A"><ellipse cx="0" cy="-20" rx="12" ry="19"/><ellipse cx="0" cy="-20" rx="12" ry="19" transform="rotate(72)"/><ellipse cx="0" cy="-20" rx="12" ry="19" transform="rotate(144)"/><ellipse cx="0" cy="-20" rx="12" ry="19" transform="rotate(216)"/><ellipse cx="0" cy="-20" rx="12" ry="19" transform="rotate(288)"/></g>
+      <circle r="13" fill="#FFC83D"/>
+    </svg>
+    <svg id="ppot" viewBox="0 0 80 60" aria-hidden="true">
+      <rect x="4" y="4" width="72" height="13" rx="6" fill="#1F57B8"/>
+      <path d="M9 17 H71 L63 58 H17Z" fill="#2A6FDB"/>
+      <path d="M40 26 l7 7 -7 7 -7 -7Z M24 32 l4 4 -4 4 -4 -4Z M56 32 l4 4 -4 4 -4 -4Z" fill="#fff"/>
+    </svg>
+  </nav>
+  <main id="stage">
+    <section class="view" id="view-intro">
+      <div class="center">
+        <div class="guide" id="introGuide"></div>
+        <div>
+          <h1 id="title"></h1>
+          <p class="sub" id="sub"></p>
+          <div class="howto"><ol id="howto"></ol><p id="keys"></p></div>
+          <div class="setting" id="setting"></div>
+          <button class="btn start" id="startBtn"></button>
+          <button class="btn print" id="printBtn1"></button>
+        </div>
+      </div>
+    </section>
+    <section class="view" id="view-quiz" hidden>
+      <div class="top">
+        <span class="qnum" id="qnum"></span>
+        <span class="chip" id="chip"></span>
+        <span class="spacer"></span>
+        <div class="timer">
+          <button class="tbtn" id="pauseBtn"></button>
+          <button class="tbtn" id="restartBtn"></button>
+          <div class="ring" id="ring" role="timer">
+            <svg viewBox="0 0 80 80"><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" id="ringFg" cx="40" cy="40" r="34"/></svg>
+            <span id="ringNum"></span>
+          </div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="art" id="art"></div>
+        <div class="right">
+          <p class="qtext" id="qtext"></p>
+          <div id="answers"></div>
+          <div class="guide" id="guide"><div id="zitSlot"></div><p class="bubble" id="bubble" aria-live="polite"></p></div>
+        </div>
+      </div>
+      <div class="controls">
+        <button class="btn" id="prevBtn"></button>
+        <button class="btn reveal" id="revealBtn"></button>
+        <button class="btn next" id="nextBtn"></button>
+        <span class="spacer"></span>
+        <button class="btn small" id="soundBtn"></button>
+        <button class="btn small" id="fsBtn"></button>
+      </div>
+    </section>
+    <section class="view" id="view-end" hidden>
+      <div class="recap">
+        <div class="guide happy" id="endGuide"></div>
+        <div>
+          <h2 id="endTitle"></h2>
+          <div class="points" id="points"></div>
+          <p class="bubble" id="endBubble"></p>
+          <div class="controls">
+            <button class="btn" id="backBtn"></button>
+            <button class="btn next" id="againBtn"></button>
+            <button class="btn print" id="printBtn2"></button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+<div id="printModal" hidden role="dialog" aria-modal="true" aria-labelledby="pmTitle">
+  <div class="box">
+    <h3 id="pmTitle"></h3>
+    <div class="choices">
+      <button class="choice" data-mode="student"></button>
+      <button class="choice" data-mode="key"></button>
+      <button class="choice" data-mode="both"></button>
+    </div>
+    <button class="btn" id="pmCancel"></button>
+  </div>
+</div>
+<div id="printArea" aria-hidden="true"></div>
+<script>
+const DATA = {"lang":"fr","title":"Présent, passé ou futur ?","level":"3e année primaire","subject":"Langue française","timePerQuestion":45,"questions":[{"type":"qcm","text":"Salma joue dans la cour maintenant. À quel temps est la phrase ?","options":["Passé","Présent","Futur"],"correct":1,"say":"Zitouna te dit : cherche le mot qui indique quand cela se passe !","explain":"Ce qui se passe maintenant est au présent.","svg":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 440 380\" aria-hidden=\"true\">\n  \u003crect width=\"440\" height=\"380\" fill=\"#EAF8FF\"/>\n  \u003cpath d=\"M0 232H440V380H0Z\" fill=\"#FFDDA3\"/>\n  \u003cpath d=\"M0 232H440\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003cpath d=\"M0 290H440M75 232V290M290 232V290M170 290V380M365 290V380\" fill=\"none\" stroke=\"#D9AE79\" stroke-width=\"3\"/>\n  \u003cpath d=\"M18 232V116Q18 104 30 104H85Q97 104 97 116V232\" fill=\"#FFC83D\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003cpath d=\"M31 141H84M31 179H84\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n  \u003cpath d=\"M358 232V128Q358 116 370 116H412Q424 116 424 128V232\" fill=\"#12A89C\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003cpath d=\"M371 151H411M371 187H411\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n  \u003ccircle cx=\"310\" cy=\"53\" r=\"25\" fill=\"#FFC83D\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003cpath d=\"M310 14V8M310 98V92M271 53H265M355 53H349M282 25L277 20M343 86L338 81\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linecap=\"round\"/>\n  \u003cellipse cx=\"209\" cy=\"311\" rx=\"65\" ry=\"12\" fill=\"#CBA575\"/>\n  \u003cellipse cx=\"323\" cy=\"306\" rx=\"33\" ry=\"9\" fill=\"#CBA575\"/>\n  \u003cg class=\"sway\">\n    \u003cpath d=\"M178 244L171 296\" stroke=\"#173B2A\" stroke-width=\"16\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M211 244L226 296\" stroke=\"#173B2A\" stroke-width=\"16\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M158 301Q160 291 173 292L190 298Q195 309 183 311H163Q155 311 158 301Z\" fill=\"#2A6FDB\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003cpath d=\"M215 299Q219 290 232 294L245 302Q248 312 236 312H219Q212 311 215 299Z\" fill=\"#2A6FDB\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003cpath d=\"M169 170Q192 154 219 171L235 258H157Z\" fill=\"#7B61FF\" stroke=\"#173B2A\" stroke-width=\"5\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M171 182Q151 201 142 225\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"15\" stroke-linecap=\"round\"/>\n    \u003ccircle cx=\"141\" cy=\"228\" r=\"9\" fill=\"#C97848\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n    \u003cpath d=\"M220 183Q241 199 259 222\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"15\" stroke-linecap=\"round\"/>\n    \u003ccircle cx=\"262\" cy=\"226\" r=\"9\" fill=\"#C97848\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n    \u003cpath d=\"M183 159V177Q196 188 208 177V159\" fill=\"#C97848\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003ccircle cx=\"195\" cy=\"118\" r=\"48\" fill=\"#C97848\" stroke=\"#173B2A\" stroke-width=\"5\"/>\n    \u003cpath d=\"M149 117Q143 72 177 64Q208 47 235 78Q246 91 242 117Q231 101 224 85Q197 98 153 97Z\" fill=\"#173B2A\"/>\n    \u003ccircle cx=\"150\" cy=\"124\" r=\"9\" fill=\"#C97848\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n    \u003ccircle cx=\"240\" cy=\"124\" r=\"9\" fill=\"#C97848\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n    \u003ccircle cx=\"179\" cy=\"121\" r=\"3.5\" fill=\"#173B2A\"/>\n    \u003ccircle cx=\"210\" cy=\"121\" r=\"3.5\" fill=\"#173B2A\"/>\n    \u003cpath d=\"M185 140Q195 149 206 139\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"3\" stroke-linecap=\"round\"/>\n    \u003ccircle cx=\"164\" cy=\"137\" r=\"5\" fill=\"#FF8A3D\" opacity=\".65\"/>\n    \u003ccircle cx=\"225\" cy=\"137\" r=\"5\" fill=\"#FF8A3D\" opacity=\".65\"/>\n  \u003c/g>\n  \u003cg class=\"bounce\">\n    \u003ccircle cx=\"323\" cy=\"275\" r=\"28\" fill=\"#FF5E5E\" stroke=\"#173B2A\" stroke-width=\"5\"/>\n    \u003cpath d=\"M300 259Q322 265 341 294M330 249Q313 270 319 302\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"3\" stroke-linecap=\"round\"/>\n  \u003c/g>\n  \u003cpath d=\"M284 278H272M278 291H265\" stroke=\"#173B2A\" stroke-width=\"3\" stroke-linecap=\"round\"/>\n  \u003cg class=\"reveal-only\">\n    \u003crect x=\"140\" y=\"326\" width=\"160\" height=\"45\" rx=\"20\" fill=\"#37A047\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003ctext x=\"220\" y=\"357\" text-anchor=\"middle\" font-family=\"Andika, Tajawal, Verdana, sans-serif\" font-size=\"27\" font-weight=\"bold\" fill=\"#FFFFFF\">présent\u003c/text>\n  \u003c/g>\n\u003c/svg>"},{"type":"vf","text":"Le passé parle de ce qui s'est déjà passé.","answer":true,"say":"Zitouna t'encourage : pense à ce qui est déjà arrivé !","explain":"Le passé parle de ce qui s'est déjà passé.","svg":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 440 380\" aria-hidden=\"true\">\n  \u003crect width=\"440\" height=\"380\" fill=\"#FFF9E9\"/>\n  \u003ccircle cx=\"68\" cy=\"76\" r=\"17\" fill=\"#FFC83D\"/>\n  \u003ccircle cx=\"379\" cy=\"89\" r=\"12\" fill=\"#FF8A3D\"/>\n  \u003ccircle cx=\"76\" cy=\"299\" r=\"10\" fill=\"#7B61FF\"/>\n  \u003ccircle cx=\"373\" cy=\"291\" r=\"16\" fill=\"#3BA7F0\"/>\n\n  \u003crect x=\"95\" y=\"75\" width=\"250\" height=\"235\" rx=\"24\" fill=\"#FFFFFF\" stroke=\"#173B2A\" stroke-width=\"5\"/>\n  \u003cpath d=\"M119 75h202a24 24 0 0 1 24 24v42H95V99a24 24 0 0 1 24-24Z\" fill=\"#FF8A3D\" stroke=\"#173B2A\" stroke-width=\"5\"/>\n  \u003cpath d=\"M95 141h250\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"5\"/>\n  \u003crect x=\"143\" y=\"58\" width=\"17\" height=\"36\" rx=\"8\" fill=\"#7B61FF\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003crect x=\"280\" y=\"58\" width=\"17\" height=\"36\" rx=\"8\" fill=\"#7B61FF\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n\n  \u003ccircle cx=\"147\" cy=\"185\" r=\"10\" fill=\"#FFC83D\"/>\n  \u003ccircle cx=\"195\" cy=\"185\" r=\"10\" fill=\"#12A89C\"/>\n  \u003ccircle cx=\"243\" cy=\"185\" r=\"10\" fill=\"#FF5E8A\"/>\n  \u003ccircle cx=\"291\" cy=\"185\" r=\"10\" fill=\"#3BA7F0\"/>\n  \u003ccircle cx=\"147\" cy=\"230\" r=\"10\" fill=\"#3BA7F0\"/>\n  \u003ccircle cx=\"195\" cy=\"230\" r=\"10\" fill=\"#FFC83D\"/>\n  \u003ccircle cx=\"243\" cy=\"230\" r=\"10\" fill=\"#7B61FF\"/>\n\n  \u003cg transform=\"translate(282 212)\">\n    \u003cg class=\"sway\">\n      \u003cpath d=\"M0 0 63 0v98H-20Q19 83 0 0Z\" fill=\"#FFE6B8\" stroke=\"#173B2A\" stroke-width=\"5\" stroke-linejoin=\"round\"/>\n      \u003cpath d=\"M0 0Q20 29 63 33V0Z\" fill=\"#FF5E8A\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n      \u003cpath d=\"M0 0Q25 45 63 33\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003c/g>\n  \u003c/g>\n\n  \u003cg class=\"reveal-only\">\n    \u003crect x=\"148\" y=\"248\" width=\"144\" height=\"53\" rx=\"24\" fill=\"#37A047\" stroke=\"#173B2A\" stroke-width=\"5\"/>\n    \u003ctext x=\"220\" y=\"284\" text-anchor=\"middle\" font-family=\"Andika, Tajawal, Verdana, sans-serif\" font-size=\"30\" font-weight=\"bold\" fill=\"#FFFFFF\">Vrai\u003c/text>\n  \u003c/g>\n\u003c/svg>"},{"type":"id","text":"Hier, Nour a dessiné une fleur. Quel est le temps de cette phrase ?","answer":"Passé","say":"Zitouna te souffle : le mot « hier » peut t'aider !","explain":"« Hier » indique que l'action est dans le passé.","svg":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 440 380\" aria-hidden=\"true\">\n  \u003crect width=\"440\" height=\"380\" fill=\"#FFF9E9\"/>\n  \u003cellipse cx=\"220\" cy=\"351\" rx=\"152\" ry=\"15\" fill=\"#DDF3E8\"/>\n\n  \u003cg transform=\"translate(318 31)\">\n    \u003crect x=\"0\" y=\"13\" width=\"99\" height=\"94\" rx=\"12\" fill=\"#FFFFFF\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003cpath d=\"M2 37V24Q2 13 14 13H85Q97 13 97 24V37Z\" fill=\"#FF8A3D\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003cpath d=\"M23 5v18M75 5v18\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"5\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M87 77Q91 93 97 107L71 98Z\" fill=\"#D9EEFF\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n    \u003cg fill=\"none\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linecap=\"round\" stroke-linejoin=\"round\">\n      \u003cpath d=\"M17 51v31m0-14q0-12 9-12t9 12v14\"/>\n      \u003cpath d=\"M45 59v23m0-32v1\"/>\n      \u003cpath d=\"M55 70h23q0-13-11-13-12 0-12 13t12 13q6 0 10-4\"/>\n      \u003cpath d=\"M85 82V58m0 12q0-12 10-12\"/>\n    \u003c/g>\n  \u003c/g>\n\n  \u003cg transform=\"translate(0 3)\">\n    \u003cpath d=\"M132 345v-99q0-58 88-58t88 58v99Z\" fill=\"#7B61FF\" stroke=\"#173B2A\" stroke-width=\"5\"/>\n    \u003cpath d=\"M141 254q-45 12-51 59\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"26\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M141 254q-45 12-51 59\" fill=\"none\" stroke=\"#7B61FF\" stroke-width=\"20\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M299 254q45 12 51 59\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"26\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M299 254q45 12 51 59\" fill=\"none\" stroke=\"#7B61FF\" stroke-width=\"20\" stroke-linecap=\"round\"/>\n\n    \u003cpath d=\"M151 125q-19-72 69-78 88 6 69 78v43H151Z\" fill=\"#173B2A\" stroke=\"#173B2A\" stroke-width=\"5\"/>\n    \u003cellipse cx=\"220\" cy=\"146\" rx=\"67\" ry=\"76\" fill=\"#B9754F\" stroke=\"#173B2A\" stroke-width=\"5\"/>\n    \u003cpath d=\"M153 126q-4-73 67-79 76 4 68 79-17-5-28-31-45 27-107 31Z\" fill=\"#173B2A\"/>\n    \u003ccircle cx=\"191\" cy=\"144\" r=\"5\" fill=\"#173B2A\"/>\n    \u003ccircle cx=\"249\" cy=\"144\" r=\"5\" fill=\"#173B2A\"/>\n    \u003cpath d=\"M206 174q14 13 28 0\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linecap=\"round\"/>\n    \u003ccircle cx=\"175\" cy=\"163\" r=\"8\" fill=\"#FF8A8A\" opacity=\".65\"/>\n    \u003ccircle cx=\"265\" cy=\"163\" r=\"8\" fill=\"#FF8A8A\" opacity=\".65\"/>\n  \u003c/g>\n\n  \u003cg transform=\"rotate(-4 220 282)\">\n    \u003crect x=\"119\" y=\"221\" width=\"202\" height=\"120\" rx=\"11\" fill=\"#FFFFFF\" stroke=\"#173B2A\" stroke-width=\"5\"/>\n    \u003cpath d=\"M215 324v-44m0 31q-23-2-25-17 20 0 25 17Zm0-12q24-3 27-18-22 1-27 18Z\" fill=\"#37A047\" stroke=\"#173B2A\" stroke-width=\"3\" stroke-linejoin=\"round\"/>\n    \u003cg class=\"sway\">\n      \u003cellipse cx=\"215\" cy=\"261\" rx=\"13\" ry=\"24\" fill=\"#FF5E8A\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n      \u003cellipse cx=\"215\" cy=\"261\" rx=\"13\" ry=\"24\" fill=\"#FF8A3D\" stroke=\"#173B2A\" stroke-width=\"3\" transform=\"rotate(72 215 261)\"/>\n      \u003cellipse cx=\"215\" cy=\"261\" rx=\"13\" ry=\"24\" fill=\"#7B61FF\" stroke=\"#173B2A\" stroke-width=\"3\" transform=\"rotate(144 215 261)\"/>\n      \u003cellipse cx=\"215\" cy=\"261\" rx=\"13\" ry=\"24\" fill=\"#3BA7F0\" stroke=\"#173B2A\" stroke-width=\"3\" transform=\"rotate(216 215 261)\"/>\n      \u003cellipse cx=\"215\" cy=\"261\" rx=\"13\" ry=\"24\" fill=\"#FF5E8A\" stroke=\"#173B2A\" stroke-width=\"3\" transform=\"rotate(288 215 261)\"/>\n      \u003ccircle cx=\"215\" cy=\"261\" r=\"12\" fill=\"#FFC83D\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n    \u003c/g>\n  \u003c/g>\n  \u003cellipse cx=\"111\" cy=\"307\" rx=\"20\" ry=\"13\" fill=\"#B9754F\" stroke=\"#173B2A\" stroke-width=\"4\" transform=\"rotate(-24 111 307)\"/>\n  \u003cellipse cx=\"329\" cy=\"307\" rx=\"20\" ry=\"13\" fill=\"#B9754F\" stroke=\"#173B2A\" stroke-width=\"4\" transform=\"rotate(24 329 307)\"/>\n\n  \u003cg class=\"reveal-only\">\n    \u003crect x=\"16\" y=\"23\" width=\"176\" height=\"53\" rx=\"22\" fill=\"#FFC83D\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003ctext x=\"104\" y=\"59\" text-anchor=\"middle\" font-family=\"Andika, Tajawal, Verdana, sans-serif\" font-size=\"29\" font-weight=\"bold\" fill=\"#173B2A\">Passé\u003c/text>\n  \u003c/g>\n\u003c/svg>"},{"type":"qcm","text":"Demain, Amine jouera au ballon. À quel temps est la phrase ?","options":["Futur","Passé","Présent"],"correct":0,"say":"Zitouna t'invite à regarder le premier mot de la phrase !","explain":"Ce qui se passera demain est au futur.","svg":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 440 380\" aria-hidden=\"true\">\n  \u003crect width=\"440\" height=\"380\" fill=\"#FFF9E9\"/>\n  \u003cpath d=\"M0 309 Q110 280 220 310 T440 303 V380 H0Z\" fill=\"#DDF5D7\"/>\n  \u003ccircle cx=\"58\" cy=\"65\" r=\"25\" fill=\"#FFC83D\"/>\n  \u003cpath d=\"M42 37 V28 M74 37 L81 29 M88 64 H98 M27 64 H17\" fill=\"none\" stroke=\"#FF8A3D\" stroke-width=\"4\" stroke-linecap=\"round\"/>\n\n  \u003cg class=\"sway\">\n    \u003crect x=\"291\" y=\"47\" width=\"119\" height=\"130\" rx=\"15\" fill=\"#FFFFFF\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003cpath d=\"M293 76 Q293 49 309 49 H392 Q409 49 409 67 V83 H293Z\" fill=\"#FF5E8A\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003cpath d=\"M320 40 V57 M380 40 V57\" stroke=\"#173B2A\" stroke-width=\"6\" stroke-linecap=\"round\"/>\n    \u003crect x=\"307\" y=\"98\" width=\"24\" height=\"24\" rx=\"5\" fill=\"#FFC83D\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n    \u003crect x=\"339\" y=\"98\" width=\"24\" height=\"24\" rx=\"5\" fill=\"#B6A7FF\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n    \u003crect x=\"371\" y=\"98\" width=\"24\" height=\"24\" rx=\"5\" fill=\"#95DBFF\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n    \u003crect x=\"307\" y=\"130\" width=\"24\" height=\"24\" rx=\"5\" fill=\"#B6E7A4\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n    \u003crect x=\"339\" y=\"130\" width=\"56\" height=\"24\" rx=\"6\" fill=\"#FFC83D\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n  \u003c/g>\n\n  \u003cpath d=\"M176 236 Q150 247 140 279\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"19\" stroke-linecap=\"round\"/>\n  \u003cpath d=\"M174 234 Q149 244 139 275\" fill=\"none\" stroke=\"#FFB581\" stroke-width=\"13\" stroke-linecap=\"round\"/>\n  \u003cpath d=\"M255 237 Q275 245 284 263\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"19\" stroke-linecap=\"round\"/>\n  \u003cpath d=\"M255 237 Q275 245 284 263\" fill=\"none\" stroke=\"#FFB581\" stroke-width=\"13\" stroke-linecap=\"round\"/>\n  \u003cpath d=\"M192 302 L186 344 M240 302 L246 344\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"21\" stroke-linecap=\"round\"/>\n  \u003cpath d=\"M192 302 L186 344 M240 302 L246 344\" fill=\"none\" stroke=\"#2A6FDB\" stroke-width=\"15\" stroke-linecap=\"round\"/>\n  \u003cellipse cx=\"178\" cy=\"348\" rx=\"24\" ry=\"10\" fill=\"#FF8A3D\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003cellipse cx=\"254\" cy=\"348\" rx=\"24\" ry=\"10\" fill=\"#FF8A3D\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003cpath d=\"M177 218 Q216 202 255 218 L263 307 Q218 326 169 307Z\" fill=\"#3BA7F0\" stroke=\"#173B2A\" stroke-width=\"5\"/>\n  \u003cpath d=\"M200 220 L215 244 L231 220\" fill=\"none\" stroke=\"#FFFFFF\" stroke-width=\"5\" stroke-linecap=\"round\"/>\n  \u003crect x=\"205\" y=\"190\" width=\"23\" height=\"28\" rx=\"10\" fill=\"#B86C42\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003cellipse cx=\"216\" cy=\"153\" rx=\"47\" ry=\"53\" fill=\"#B86C42\" stroke=\"#173B2A\" stroke-width=\"5\"/>\n  \u003cpath d=\"M170 148 Q163 95 207 91 Q255 84 263 139 Q245 132 235 115 Q213 139 170 148Z\" fill=\"#173B2A\"/>\n  \u003ccircle cx=\"197\" cy=\"157\" r=\"3.5\" fill=\"#173B2A\"/>\n  \u003ccircle cx=\"231\" cy=\"157\" r=\"3.5\" fill=\"#173B2A\"/>\n  \u003cpath d=\"M205 178 Q216 187 228 177\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"3\" stroke-linecap=\"round\"/>\n\n  \u003cg class=\"bounce\">\n    \u003ccircle cx=\"91\" cy=\"303\" r=\"38\" fill=\"#FFFFFF\" stroke=\"#173B2A\" stroke-width=\"5\"/>\n    \u003cpath d=\"M77 275 L101 274 L113 294 L99 312 L76 307 L68 289Z\" fill=\"#FF8A3D\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n    \u003cpath d=\"M101 274 L108 266 M113 294 L128 295 M99 312 L104 337 M76 307 L61 326 M68 289 L55 282\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n  \u003c/g>\n\n  \u003cg class=\"hide-on-reveal\">\n    \u003ccircle cx=\"345\" cy=\"210\" r=\"24\" fill=\"#7B61FF\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003cpath d=\"M337 202 Q338 192 347 194 Q359 196 350 207 L345 212\" fill=\"none\" stroke=\"#FFFFFF\" stroke-width=\"5\" stroke-linecap=\"round\"/>\n    \u003ccircle cx=\"345\" cy=\"222\" r=\"3\" fill=\"#FFFFFF\"/>\n  \u003c/g>\n  \u003cg class=\"reveal-only\">\n    \u003crect x=\"287\" y=\"177\" width=\"133\" height=\"43\" rx=\"18\" fill=\"#37A047\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003ctext x=\"353\" y=\"207\" text-anchor=\"middle\" fill=\"#FFFFFF\" font-family=\"Andika, Tajawal, Verdana, sans-serif\" font-size=\"27\" font-weight=\"bold\">futur\u003c/text>\n    \u003crect x=\"270\" y=\"223\" width=\"155\" height=\"42\" rx=\"14\" fill=\"#FFC83D\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003ctext x=\"347\" y=\"252\" text-anchor=\"middle\" fill=\"#173B2A\" font-family=\"Andika, Tajawal, Verdana, sans-serif\" font-size=\"24\" font-weight=\"bold\">demain\u003c/text>\n  \u003c/g>\n\u003c/svg>"},{"type":"vf","text":"Le futur parle de ce qui se passe maintenant.","answer":false,"say":"Zitouna te dit : pense à la différence entre maintenant et plus tard !","explain":"Le futur parle de ce qui se passera plus tard.","svg":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 440 380\" aria-hidden=\"true\">\n  \u003crect width=\"440\" height=\"380\" fill=\"#F4FFF6\"/>\n  \u003cellipse cx=\"220\" cy=\"320\" rx=\"175\" ry=\"18\" fill=\"#DDF3E4\"/>\n\n  \u003cg stroke=\"#173B2A\" stroke-width=\"5\" stroke-linejoin=\"round\" stroke-linecap=\"round\">\n    \u003ccircle cx=\"135\" cy=\"177\" r=\"96\" fill=\"#3BA7F0\"/>\n    \u003ccircle cx=\"135\" cy=\"177\" r=\"79\" fill=\"#FFFFFF\"/>\n    \u003ccircle cx=\"135\" cy=\"112\" r=\"5\" fill=\"#FF8A3D\"/>\n    \u003ccircle cx=\"200\" cy=\"177\" r=\"5\" fill=\"#FF8A3D\"/>\n    \u003ccircle cx=\"135\" cy=\"242\" r=\"5\" fill=\"#FF8A3D\"/>\n    \u003ccircle cx=\"70\" cy=\"177\" r=\"5\" fill=\"#FF8A3D\"/>\n    \u003cpath d=\"M135 177 L135 132\" fill=\"none\"/>\n    \u003cg transform=\"translate(135 177)\">\n      \u003cg class=\"sway\">\n        \u003cpath d=\"M0 0 L38 24\" fill=\"none\"/>\n      \u003c/g>\n    \u003c/g>\n    \u003ccircle cx=\"135\" cy=\"177\" r=\"8\" fill=\"#FFC83D\"/>\n  \u003c/g>\n\n  \u003cg stroke=\"#173B2A\" stroke-width=\"5\" stroke-linejoin=\"round\" stroke-linecap=\"round\">\n    \u003crect x=\"237\" y=\"91\" width=\"165\" height=\"190\" rx=\"17\" fill=\"#FFFFFF\"/>\n    \u003cpath d=\"M237 108 Q237 91 254 91 H385 Q402 91 402 108 V135 H237 Z\" fill=\"#FF8A3D\"/>\n    \u003cpath d=\"M272 80 V107 M367 80 V107\" fill=\"none\"/>\n    \u003crect x=\"257\" y=\"155\" width=\"32\" height=\"28\" rx=\"6\" fill=\"#FFC83D\"/>\n    \u003crect x=\"303\" y=\"155\" width=\"32\" height=\"28\" rx=\"6\" fill=\"#12A89C\"/>\n    \u003crect x=\"349\" y=\"155\" width=\"32\" height=\"28\" rx=\"6\" fill=\"#FF5E8A\"/>\n    \u003crect x=\"257\" y=\"196\" width=\"32\" height=\"28\" rx=\"6\" fill=\"#7B61FF\"/>\n    \u003crect x=\"303\" y=\"196\" width=\"32\" height=\"28\" rx=\"6\" fill=\"#3BA7F0\"/>\n    \u003crect x=\"349\" y=\"196\" width=\"32\" height=\"28\" rx=\"6\" fill=\"#FFC83D\"/>\n    \u003crect x=\"257\" y=\"237\" width=\"32\" height=\"28\" rx=\"6\" fill=\"#FF5E8A\"/>\n    \u003crect x=\"303\" y=\"237\" width=\"32\" height=\"28\" rx=\"6\" fill=\"#37A047\"/>\n    \u003crect x=\"349\" y=\"237\" width=\"32\" height=\"28\" rx=\"6\" fill=\"#7B61FF\"/>\n  \u003c/g>\n\n  \u003cg class=\"reveal-only\">\n    \u003crect x=\"156\" y=\"291\" width=\"128\" height=\"63\" rx=\"24\" fill=\"#FF5E8A\" stroke=\"#173B2A\" stroke-width=\"5\"/>\n    \u003ctext x=\"220\" y=\"333\" text-anchor=\"middle\" font-family=\"Andika, Tajawal, Verdana, sans-serif\" font-size=\"32\" font-weight=\"bold\" fill=\"#FFFFFF\">Faux\u003c/text>\n  \u003c/g>\n\u003c/svg>"},{"type":"id","text":"Aujourd'hui, Yassine lit un livre. Quel est le temps de cette phrase ?","answer":"Présent","say":"Zitouna t'encourage : quand Yassine lit-il ?","explain":"« Aujourd'hui » peut indiquer le présent.","svg":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 440 380\" aria-hidden=\"true\">\n  \u003crect width=\"440\" height=\"380\" fill=\"#FFF9EB\"/>\n  \u003cellipse cx=\"220\" cy=\"346\" rx=\"172\" ry=\"19\" fill=\"#E5F1DC\"/>\n\n  \u003cg class=\"sway\">\n    \u003cpath d=\"M288 35 Q288 28 296 28 H389 Q397 28 397 36 V135 Q397 143 389 143 H296 Q288 143 288 135 Z\" fill=\"#FFFFFF\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003cpath d=\"M288 53 H397 V76 H288 Z\" fill=\"#FF8A3D\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003cpath d=\"M311 23 V61 M374 23 V61\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"5\" stroke-linecap=\"round\"/>\n    \u003ccircle cx=\"343\" cy=\"108\" r=\"22\" fill=\"#FFC83D\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003cpath d=\"M343 94 V121 M335 101 Q343 93 351 101 M335 114 Q343 122 351 114\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"3\" stroke-linecap=\"round\"/>\n  \u003c/g>\n\n  \u003cpath d=\"M101 333 Q91 272 116 237 Q153 218 220 225 Q292 218 320 245 Q343 277 330 333 Z\" fill=\"#7B61FF\" stroke=\"#173B2A\" stroke-width=\"5\"/>\n  \u003cpath d=\"M125 331 Q117 292 140 270 M312 331 Q323 291 299 270\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linecap=\"round\"/>\n  \u003cpath d=\"M158 177 Q151 151 168 127 Q190 108 224 115 Q261 120 278 148 Q287 175 274 202 Q255 223 220 224 Q181 224 164 202 Z\" fill=\"#C97843\" stroke=\"#173B2A\" stroke-width=\"5\"/>\n  \u003cpath d=\"M155 167 Q151 110 206 95 Q248 87 276 120 Q291 138 279 170 Q269 150 260 142 Q224 158 175 145 Z\" fill=\"#173B2A\"/>\n  \u003ccircle cx=\"163\" cy=\"181\" r=\"13\" fill=\"#C97843\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003ccircle cx=\"275\" cy=\"181\" r=\"13\" fill=\"#C97843\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003cpath d=\"M190 181 Q201 190 211 182 M232 182 Q242 190 253 181\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linecap=\"round\"/>\n  \u003cpath d=\"M210 202 Q220 210 230 202\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"3\" stroke-linecap=\"round\"/>\n  \u003ccircle cx=\"182\" cy=\"197\" r=\"7\" fill=\"#FF8A3D\" opacity=\".6\"/>\n  \u003ccircle cx=\"258\" cy=\"197\" r=\"7\" fill=\"#FF8A3D\" opacity=\".6\"/>\n\n  \u003cpath d=\"M108 263 Q133 251 162 272 L181 295 L152 315 Q117 299 108 263 Z\" fill=\"#C97843\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003cpath d=\"M331 263 Q305 251 278 272 L259 295 L288 315 Q323 299 331 263 Z\" fill=\"#C97843\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003cpath d=\"M220 270 Q185 245 136 256 V326 Q186 316 220 341 Z\" fill=\"#3BA7F0\" stroke=\"#173B2A\" stroke-width=\"5\" stroke-linejoin=\"round\"/>\n  \u003cpath d=\"M220 270 Q254 245 303 256 V326 Q254 316 220 341 Z\" fill=\"#2A6FDB\" stroke=\"#173B2A\" stroke-width=\"5\" stroke-linejoin=\"round\"/>\n  \u003cpath d=\"M220 270 V341 M152 274 Q177 269 199 281 M152 290 Q175 286 198 297 M242 281 Q266 269 287 274 M242 297 Q265 286 287 290\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"3\" stroke-linecap=\"round\"/>\n\n  \u003cg class=\"reveal-only\">\n    \u003crect x=\"39\" y=\"36\" width=\"207\" height=\"61\" rx=\"25\" fill=\"#37A047\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003ctext x=\"143\" y=\"76\" text-anchor=\"middle\" font-family=\"Andika, Tajawal, Verdana, sans-serif\" font-size=\"30\" font-weight=\"bold\" fill=\"#FFFFFF\">présent\u003c/text>\n  \u003c/g>\n\u003c/svg>"},{"type":"qcm","text":"Quelle phrase parle du passé ?","options":["Nour chante maintenant.","Nour chantera demain.","Nour a chanté hier."],"correct":2,"say":"Zitouna te conseille : repère le mot qui parle d'avant !","explain":"« Nour a chanté hier » parle du passé.","svg":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 440 380\" aria-hidden=\"true\">\n  \u003crect width=\"440\" height=\"380\" fill=\"#FFF9EB\"/>\n  \u003cellipse cx=\"220\" cy=\"349\" rx=\"188\" ry=\"19\" fill=\"#DDF3E7\"/>\n\n  \u003c!-- Nour -->\n  \u003cpath d=\"M65 337 Q72 247 132 245 Q192 247 200 337Z\" fill=\"#FF8A3D\" stroke=\"#173B2A\" stroke-width=\"5\" stroke-linejoin=\"round\"/>\n  \u003cpath d=\"M106 245 L113 225 H151 L158 245 Q136 268 106 245Z\" fill=\"#F5AD79\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003cpath d=\"M82 141 Q76 80 134 75 Q194 76 191 147 L181 191 H87Z\" fill=\"#173B2A\" stroke=\"#173B2A\" stroke-width=\"5\"/>\n  \u003cellipse cx=\"135\" cy=\"163\" rx=\"51\" ry=\"62\" fill=\"#F5AD79\" stroke=\"#173B2A\" stroke-width=\"5\"/>\n  \u003cpath d=\"M85 141 Q86 91 131 88 Q177 90 185 137 Q160 134 146 114 Q126 139 85 141Z\" fill=\"#173B2A\"/>\n  \u003ccircle cx=\"116\" cy=\"160\" r=\"4\" fill=\"#173B2A\"/>\n  \u003ccircle cx=\"153\" cy=\"160\" r=\"4\" fill=\"#173B2A\"/>\n  \u003cpath d=\"M121 187 Q135 200 149 187\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linecap=\"round\"/>\n  \u003ccircle cx=\"93\" cy=\"178\" r=\"8\" fill=\"#FF8A8A\" opacity=\".65\"/>\n  \u003ccircle cx=\"176\" cy=\"178\" r=\"8\" fill=\"#FF8A8A\" opacity=\".65\"/>\n  \u003cpath d=\"M189 267 Q218 246 241 222\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"20\" stroke-linecap=\"round\"/>\n  \u003cpath d=\"M189 267 Q218 246 241 222\" fill=\"none\" stroke=\"#F5AD79\" stroke-width=\"13\" stroke-linecap=\"round\"/>\n  \u003ccircle cx=\"245\" cy=\"218\" r=\"12\" fill=\"#F5AD79\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003cpath d=\"M72 268 Q51 283 57 313\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"20\" stroke-linecap=\"round\"/>\n  \u003cpath d=\"M72 268 Q51 283 57 313\" fill=\"none\" stroke=\"#F5AD79\" stroke-width=\"13\" stroke-linecap=\"round\"/>\n\n  \u003c!-- Trois cases de phrases, sans texte avant la révélation -->\n  \u003crect x=\"259\" y=\"77\" width=\"155\" height=\"65\" rx=\"17\" fill=\"#7B61FF\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003cpath d=\"M278 100 H389 M278 119 H354\" stroke=\"#FFFFFF\" stroke-width=\"7\" stroke-linecap=\"round\"/>\n  \u003crect x=\"259\" y=\"158\" width=\"155\" height=\"65\" rx=\"17\" fill=\"#3BA7F0\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003cpath d=\"M278 181 H389 M278 200 H361\" stroke=\"#FFFFFF\" stroke-width=\"7\" stroke-linecap=\"round\"/>\n  \u003crect x=\"259\" y=\"239\" width=\"155\" height=\"65\" rx=\"17\" fill=\"#FF5E8A\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003cpath d=\"M278 262 H389 M278 281 H371\" stroke=\"#FFFFFF\" stroke-width=\"7\" stroke-linecap=\"round\"/>\n\n  \u003cg class=\"float\" fill=\"#FFC83D\" stroke=\"#173B2A\" stroke-width=\"3\" stroke-linejoin=\"round\">\n    \u003cpath d=\"M211 74 V43 L230 39 V67 M211 44 L230 40\" fill=\"none\" stroke-linecap=\"round\"/>\n    \u003cellipse cx=\"205\" cy=\"76\" rx=\"8\" ry=\"6\"/>\n    \u003cellipse cx=\"224\" cy=\"69\" rx=\"8\" ry=\"6\"/>\n    \u003cpath d=\"M54 97 V71 L72 67 V91\" fill=\"none\" stroke-linecap=\"round\"/>\n    \u003cellipse cx=\"48\" cy=\"99\" rx=\"8\" ry=\"6\"/>\n    \u003cellipse cx=\"66\" cy=\"93\" rx=\"8\" ry=\"6\"/>\n  \u003c/g>\n\n  \u003cg class=\"reveal-only\" visibility=\"hidden\">\n    \u003crect x=\"254\" y=\"234\" width=\"165\" height=\"75\" rx=\"21\" fill=\"none\" stroke=\"#37A047\" stroke-width=\"7\"/>\n    \u003ccircle cx=\"396\" cy=\"305\" r=\"19\" fill=\"#37A047\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n    \u003cpath d=\"M386 305 L393 312 L406 298\" fill=\"none\" stroke=\"#FFFFFF\" stroke-width=\"5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n    \u003crect x=\"36\" y=\"315\" width=\"210\" height=\"48\" rx=\"18\" fill=\"#FFFFFF\" stroke=\"#37A047\" stroke-width=\"4\"/>\n    \u003ctext x=\"141\" y=\"347\" text-anchor=\"middle\" font-family=\"Andika, Tajawal, Verdana, sans-serif\" font-size=\"22\" font-weight=\"bold\" fill=\"#173B2A\">Nour a chanté hier.\u003c/text>\n  \u003c/g>\n\u003c/svg>"},{"type":"vf","text":"Le présent parle de ce qui se passe maintenant.","answer":true,"say":"Zitouna t'encourage : pense à ce qui arrive en ce moment !","explain":"Le présent parle de ce qui se passe maintenant.","svg":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 440 380\" aria-hidden=\"true\">\n  \u003crect width=\"440\" height=\"380\" fill=\"#FFF9E9\"/>\n  \u003ccircle cx=\"52\" cy=\"65\" r=\"18\" fill=\"#FFC83D\" opacity=\".55\"/>\n  \u003ccircle cx=\"389\" cy=\"88\" r=\"12\" fill=\"#FF5E8A\" opacity=\".45\"/>\n  \u003ccircle cx=\"372\" cy=\"218\" r=\"9\" fill=\"#7B61FF\" opacity=\".45\"/>\n\n  \u003c!-- Cheveux et visage -->\n  \u003cpath d=\"M147 126 Q139 54 213 51 Q282 49 283 126 L267 170 L161 170 Z\" fill=\"#173B2A\" stroke=\"#173B2A\" stroke-width=\"5\" stroke-linejoin=\"round\"/>\n  \u003ccircle cx=\"150\" cy=\"137\" r=\"17\" fill=\"#FFB987\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003ccircle cx=\"274\" cy=\"137\" r=\"17\" fill=\"#FFB987\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003cellipse cx=\"212\" cy=\"126\" rx=\"63\" ry=\"72\" fill=\"#FFB987\" stroke=\"#173B2A\" stroke-width=\"5\"/>\n  \u003cpath d=\"M150 106 Q155 56 213 56 Q266 56 274 106 Q254 93 241 75 Q211 104 150 106Z\" fill=\"#173B2A\"/>\n  \u003cpath d=\"M181 124 Q189 118 197 124 M229 124 Q237 118 245 124\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"5\" stroke-linecap=\"round\"/>\n  \u003ccircle cx=\"174\" cy=\"145\" r=\"9\" fill=\"#FF8A3D\" opacity=\".65\"/>\n  \u003ccircle cx=\"251\" cy=\"145\" r=\"9\" fill=\"#FF8A3D\" opacity=\".65\"/>\n  \u003cpath d=\"M199 151 Q212 164 226 151\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linecap=\"round\"/>\n\n  \u003c!-- Corps et bras -->\n  \u003cpath d=\"M157 197 Q172 178 194 182 L212 200 L231 182 Q256 178 274 198 L298 292 L125 292Z\" fill=\"#7B61FF\" stroke=\"#173B2A\" stroke-width=\"5\" stroke-linejoin=\"round\"/>\n  \u003cpath d=\"M170 215 Q139 226 125 261 L169 282 L195 247\" fill=\"#FFB987\" stroke=\"#173B2A\" stroke-width=\"5\" stroke-linejoin=\"round\"/>\n  \u003cpath d=\"M257 215 Q287 222 303 254 L266 280 L239 246\" fill=\"#FFB987\" stroke=\"#173B2A\" stroke-width=\"5\" stroke-linejoin=\"round\"/>\n\n  \u003c!-- Bureau et cahier ouvert -->\n  \u003crect x=\"35\" y=\"278\" width=\"370\" height=\"76\" rx=\"18\" fill=\"#FF8A3D\" stroke=\"#173B2A\" stroke-width=\"5\"/>\n  \u003cpath d=\"M77 255 Q137 238 216 259 L216 328 Q136 310 77 328Z\" fill=\"#FFFFFF\" stroke=\"#173B2A\" stroke-width=\"5\" stroke-linejoin=\"round\"/>\n  \u003cpath d=\"M216 259 Q296 238 364 255 L364 328 Q297 310 216 328Z\" fill=\"#FFFFFF\" stroke=\"#173B2A\" stroke-width=\"5\" stroke-linejoin=\"round\"/>\n  \u003cpath d=\"M216 261 L216 326\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linecap=\"round\"/>\n  \u003cpath d=\"M94 278 Q143 267 197 282 M94 296 Q143 285 197 300 M238 281 Q290 267 346 278 M238 299 Q290 285 346 296\" fill=\"none\" stroke=\"#3BA7F0\" stroke-width=\"3\" stroke-linecap=\"round\" opacity=\".65\"/>\n\n  \u003c!-- Main et crayon qui bouge sur la page -->\n  \u003cpath d=\"M269 245 Q285 246 289 259 Q291 270 277 275 L254 264Z\" fill=\"#FFB987\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003cg transform=\"translate(258 254)\">\n    \u003cg class=\"sway\">\n      \u003cpath d=\"M14 -21 L-23 28 L-29 36 L-27 25 L10 -25Z\" fill=\"#FFC83D\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n      \u003cpath d=\"M-23 28 L-29 36 L-27 25Z\" fill=\"#173B2A\"/>\n      \u003cpath d=\"M10 -25 L14 -21 L19 -28 L15 -32Z\" fill=\"#FF5E8A\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n    \u003c/g>\n  \u003c/g>\n  \u003cpath d=\"M252 239 Q266 231 275 242 Q280 250 269 256 L257 258Z\" fill=\"#FFB987\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n\n  \u003cg class=\"reveal-only\">\n    \u003crect x=\"142\" y=\"289\" width=\"150\" height=\"55\" rx=\"27\" fill=\"#37A047\" stroke=\"#173B2A\" stroke-width=\"5\"/>\n    \u003ctext x=\"217\" y=\"325\" text-anchor=\"middle\" fill=\"#FFFFFF\" font-family=\"Andika, Tajawal, Verdana, sans-serif\" font-size=\"30\" font-weight=\"bold\">Vrai\u003c/text>\n  \u003c/g>\n\u003c/svg>"},{"type":"id","text":"Demain, Salma dessinera une maison. Quel est le temps de cette phrase ?","answer":"Futur","say":"Zitouna te dit : pense à ce qui arrivera après aujourd'hui !","explain":"« Demain » indique que l'action est dans le futur.","svg":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 440 380\" aria-hidden=\"true\">\n  \u003crect width=\"440\" height=\"380\" fill=\"#FFF9E8\"/>\n  \u003ccircle cx=\"67\" cy=\"62\" r=\"28\" fill=\"#FFC83D\" opacity=\".45\"/>\n  \u003ccircle cx=\"389\" cy=\"310\" r=\"36\" fill=\"#FF8A3D\" opacity=\".22\"/>\n\n  \u003c!-- Calendrier : la page qui se soulève suggère le lendemain. -->\n  \u003cg stroke=\"#173B2A\" stroke-width=\"4\" stroke-linejoin=\"round\" stroke-linecap=\"round\">\n    \u003crect x=\"296\" y=\"29\" width=\"111\" height=\"112\" rx=\"13\" fill=\"#FFFFFF\"/>\n    \u003cpath d=\"M296 42q0-13 13-13h85q13 0 13 13v23H296z\" fill=\"#7B61FF\"/>\n    \u003cpath d=\"M318 22v15m66-15v15\" fill=\"none\"/>\n    \u003ccircle cx=\"328\" cy=\"90\" r=\"13\" fill=\"#FFC83D\"/>\n    \u003cpath d=\"M354 90h27m-10-10 10 10-10 10\" fill=\"none\"/>\n    \u003cg class=\"sway\">\n      \u003cpath d=\"M371 112q17-4 36-23v39q-13-12-36-16z\" fill=\"#BBDFFF\"/>\n    \u003c/g>\n  \u003c/g>\n\n  \u003c!-- Feuille encore blanche, posée sur la table. -->\n  \u003cpath d=\"M24 281h392v74H24z\" fill=\"#FF8A3D\" stroke=\"#173B2A\" stroke-width=\"5\" stroke-linejoin=\"round\"/>\n  \u003crect x=\"231\" y=\"205\" width=\"160\" height=\"123\" rx=\"8\" fill=\"#FFFFFF\" stroke=\"#173B2A\" stroke-width=\"5\"/>\n\n  \u003c!-- Salma -->\n  \u003cg stroke=\"#173B2A\" stroke-width=\"5\" stroke-linecap=\"round\" stroke-linejoin=\"round\">\n    \u003cpath d=\"M74 289q10-80 87-80t82 80z\" fill=\"#3BA7F0\"/>\n    \u003cpath d=\"M98 237q-28 0-39 50\" fill=\"none\"/>\n    \u003cpath d=\"M207 235q29 0 43 45\" fill=\"none\"/>\n    \u003cellipse cx=\"160\" cy=\"132\" rx=\"70\" ry=\"78\" fill=\"#173B2A\"/>\n    \u003cpath d=\"M101 139q-10-54 22-78 49-34 86 15 17 23 9 63\" fill=\"#173B2A\"/>\n    \u003cellipse cx=\"159\" cy=\"147\" rx=\"55\" ry=\"65\" fill=\"#F4B987\"/>\n    \u003cpath d=\"M103 125q30-4 48-37 21 27 62 30\" fill=\"none\"/>\n    \u003cpath d=\"M136 148h2m42 0h2\" stroke-width=\"7\"/>\n    \u003cpath d=\"M150 177q12 11 25 0\" fill=\"none\"/>\n    \u003ccircle cx=\"116\" cy=\"167\" r=\"7\" fill=\"#FF8A3D\" stroke=\"none\"/>\n    \u003ccircle cx=\"202\" cy=\"167\" r=\"7\" fill=\"#FF8A3D\" stroke=\"none\"/>\n    \u003cpath d=\"M95 251q-17 10-5 25l24 13 13-19-22-17\" fill=\"#F4B987\"/>\n    \u003cpath d=\"M217 252q20 1 30 24l-17 15-29-20\" fill=\"#F4B987\"/>\n    \u003cellipse cx=\"228\" cy=\"275\" rx=\"17\" ry=\"12\" fill=\"#F4B987\"/>\n  \u003c/g>\n\n  \u003c!-- Crayons dans les mains de Salma. -->\n  \u003cg stroke=\"#173B2A\" stroke-width=\"3\" stroke-linejoin=\"round\">\n    \u003cpath d=\"m104 271 8-72 11 2-8 72z\" fill=\"#FF5E8A\"/>\n    \u003cpath d=\"m112 199 7-13 4 15z\" fill=\"#FFC83D\"/>\n    \u003cpath d=\"m121 273 18-66 10 4-17 66z\" fill=\"#37A047\"/>\n    \u003cpath d=\"m139 207 9-11 1 15z\" fill=\"#FFC83D\"/>\n    \u003cpath d=\"m139 276 25-61 10 5-25 61z\" fill=\"#7B61FF\"/>\n    \u003cpath d=\"m164 215 11-9-1 14z\" fill=\"#FFC83D\"/>\n  \u003c/g>\n\n  \u003cg class=\"reveal-only\" visibility=\"hidden\">\n    \u003crect x=\"263\" y=\"225\" width=\"114\" height=\"47\" rx=\"20\" fill=\"#37A047\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003ctext x=\"320\" y=\"257\" text-anchor=\"middle\" fill=\"#FFFFFF\" font-size=\"27\" font-weight=\"bold\" font-family=\"Andika, Tajawal, Verdana, sans-serif\">futur\u003c/text>\n  \u003c/g>\n\u003c/svg>"},{"type":"qcm","text":"Quelle phrase parle du présent ?","options":["Amine a joué hier.","Amine joue maintenant.","Amine jouera demain."],"correct":1,"say":"Zitouna t'encourage : cherche ce qui se passe en ce moment !","explain":"« Amine joue maintenant » parle du présent.","svg":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 440 380\" aria-hidden=\"true\">\n  \u003crect width=\"440\" height=\"380\" fill=\"#F3FBF4\"/>\n  \u003cellipse cx=\"218\" cy=\"305\" rx=\"170\" ry=\"19\" fill=\"#D9EEDB\"/>\n  \u003cpath d=\"M35 306 Q220 290 405 306\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linecap=\"round\"/>\n\n  \u003cg>\n    \u003cpath d=\"M178 216 L166 281\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"24\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M222 217 L236 280\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"24\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M164 280 L148 292 Q146 298 154 299 L180 299 Q185 298 182 291 L177 280Z\" fill=\"#2A6FDB\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M226 280 L220 291 Q217 298 225 299 L251 299 Q258 298 254 292 L241 280Z\" fill=\"#2A6FDB\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n\n    \u003cpath d=\"M169 158 Q149 162 143 190 L161 218 Q194 231 235 216 L252 187 Q245 160 223 157Z\" fill=\"#FF8A3D\" stroke=\"#173B2A\" stroke-width=\"5\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M165 170 L135 213 L115 222\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"18\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n    \u003ccircle cx=\"112\" cy=\"224\" r=\"11\" fill=\"#C98255\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003cpath d=\"M242 172 L265 219 L287 232\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"18\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n    \u003ccircle cx=\"290\" cy=\"233\" r=\"11\" fill=\"#C98255\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n\n    \u003crect x=\"188\" y=\"143\" width=\"26\" height=\"23\" rx=\"10\" fill=\"#C98255\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003ccircle cx=\"200\" cy=\"103\" r=\"49\" fill=\"#C98255\" stroke=\"#173B2A\" stroke-width=\"5\"/>\n    \u003cpath d=\"M151 96 Q146 51 184 45 Q220 28 247 64 Q257 78 250 104 Q235 93 228 75 Q204 91 178 75 Q170 95 151 96Z\" fill=\"#173B2A\"/>\n    \u003ccircle cx=\"181\" cy=\"106\" r=\"4\" fill=\"#173B2A\"/>\n    \u003ccircle cx=\"218\" cy=\"106\" r=\"4\" fill=\"#173B2A\"/>\n    \u003cpath d=\"M190 126 Q200 135 211 125\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linecap=\"round\"/>\n    \u003ccircle cx=\"164\" cy=\"120\" r=\"6\" fill=\"#FF9C78\"/>\n    \u003ccircle cx=\"236\" cy=\"120\" r=\"6\" fill=\"#FF9C78\"/>\n  \u003c/g>\n\n  \u003cpath d=\"M293 274 Q284 272 277 275 M291 285 Q280 283 272 287\" fill=\"none\" stroke=\"#12A89C\" stroke-width=\"4\" stroke-linecap=\"round\"/>\n  \u003cg transform=\"translate(329 280)\">\n    \u003cg class=\"spin\">\n      \u003ccircle r=\"30\" fill=\"#FFFFFF\" stroke=\"#173B2A\" stroke-width=\"5\"/>\n      \u003cpath d=\"M0 -12 L13 -4 L9 11 L-9 11 L-13 -4Z\" fill=\"#7B61FF\" stroke=\"#173B2A\" stroke-width=\"3\" stroke-linejoin=\"round\"/>\n      \u003cpath d=\"M0 -12 L-4 -29 M13 -4 L28 -11 M9 11 L18 24 M-9 11 L-19 23 M-13 -4 L-28 -10\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n    \u003c/g>\n  \u003c/g>\n\n  \u003crect x=\"93\" y=\"328\" width=\"66\" height=\"37\" rx=\"12\" fill=\"#FF5E8A\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003crect x=\"187\" y=\"328\" width=\"66\" height=\"37\" rx=\"12\" fill=\"#FFC83D\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003crect x=\"281\" y=\"328\" width=\"66\" height=\"37\" rx=\"12\" fill=\"#3BA7F0\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003cg class=\"reveal-only\">\n    \u003crect x=\"181\" y=\"322\" width=\"78\" height=\"49\" rx=\"16\" fill=\"none\" stroke=\"#37A047\" stroke-width=\"6\"/>\n  \u003c/g>\n\u003c/svg>"}],"recap":["Passé : ce qui s'est déjà passé.","Présent : ce qui se passe maintenant.","Futur : ce qui se passera plus tard.","Hier, maintenant, demain : des indices."],"recapSay":"Bravo ! Avec les mots du temps, tu peux reconnaître le passé, le présent et le futur."};
+
+const I18N = {
+  fr:{ qnum:(n,t)=>`Question ${n} sur ${t}`, types:{qcm:"Question à choix",vf:"Vrai ou faux",id:"Devine !"},
+    tf:["Vrai","Faux"], letters:["A","B","C"], reveal:"Révéler la réponse", revealed:"Réponse révélée",
+    prev:"Question précédente", next:"Question suivante", finish:"Terminer", pause:"Pause", resume:"Reprendre", restart:"Relancer",
+    sound:on=>"Son : "+(on?"oui":"non"), fs:"Plein écran", retain:"Je retiens :", timeup:"Temps écoulé ! Qui veut aider son camarade ?",
+    sec:"s", start:"Commencer le quiz", timePer:"Temps par question :", sub:(s,l)=>`Quiz de révision : ${s}, ${l}.`,
+    howto:["Projetez la question et laissez la classe observer l'image.","Désignez un élève pour répondre.","Révélez la réponse, faites répéter la phrase de Zitouna, puis passez à la suivante."],
+    keys:"Clavier ou télécommande : flèche droite pour révéler puis avancer, flèche gauche pour revenir. P : pause, R : relancer, F : plein écran.",
+    endTitle:"Bravo la classe ! Ce qu'on retient :", again:"Recommencer le quiz", back:"Revoir la dernière question",
+    print:"Imprimer", pmTitle:"Que voulez-vous imprimer ?", cancel:"Annuler",
+    modes:{student:["Fiche élève","Les questions et les images, sans les réponses."], key:["Corrigé pour l'enseignant","Les bonnes réponses et les phrases à retenir."], both:["Les deux","La fiche élève, puis le corrigé sur une nouvelle page."]},
+    fields:["Nom et prénom :","Classe :","Date :"], answerLine:"Ma réponse :", keyTitle:"Corrigé", colQ:"Question", colA:"Bonne réponse", colR:"À retenir", recapTitle:"Ce qu'on retient" },
+  ar:{ qnum:(n,t)=>`السؤال ${n} من ${t}`, types:{qcm:"اختيار من متعدد",vf:"صحيح أم خطأ",id:"خمّن !"},
+    tf:["صحيح","خطأ"], letters:["أ","ب","ج"], reveal:"أظهر الجواب", revealed:"تم إظهار الجواب",
+    prev:"السؤال السابق", next:"السؤال التالي", finish:"إنهاء", pause:"توقف", resume:"استئناف", restart:"إعادة",
+    sound:on=>"الصوت : "+(on?"نعم":"لا"), fs:"ملء الشاشة", retain:"أتذكّر :", timeup:"انتهى الوقت! من يريد مساعدة زميله؟",
+    sec:"ث", start:"ابدأ المسابقة", timePer:"الوقت لكل سؤال :", sub:(s,l)=>`مسابقة للمراجعة : ${s}، ${l}.`,
+    howto:["اعرض السؤال واترك التلاميذ يلاحظون الصورة.","اختر تلميذا للإجابة.","أظهر الجواب، واطلب من القسم ترديد جملة زيتونة، ثم انتقل إلى السؤال التالي."],
+    keys:"لوحة المفاتيح أو جهاز التحكم : السهم الأيمن لإظهار الجواب ثم التقدم، والسهم الأيسر للرجوع. P : توقف، R : إعادة، F : ملء الشاشة.",
+    endTitle:"أحسنتم! ما نتذكّره :", again:"إعادة المسابقة", back:"مراجعة السؤال الأخير",
+    print:"طباعة", pmTitle:"ماذا تريد أن تطبع؟", cancel:"إلغاء",
+    modes:{student:["ورقة التلميذ","الأسئلة والصور بدون الأجوبة."], key:["التصحيح للأستاذ","الأجوبة الصحيحة والجمل التي يجب تذكّرها."], both:["الاثنان","ورقة التلميذ، ثم التصحيح في صفحة جديدة."]},
+    fields:["الاسم الكامل :","القسم :","التاريخ :"], answerLine:"جوابي :", keyTitle:"التصحيح", colQ:"السؤال", colA:"الجواب الصحيح", colR:"أتذكّر", recapTitle:"ما نتذكّره" },
+  en:{ qnum:(n,t)=>`Question ${n} of ${t}`, types:{qcm:"Multiple choice",vf:"True or false",id:"Guess!"},
+    tf:["True","False"], letters:["A","B","C"], reveal:"Show the answer", revealed:"Answer shown",
+    prev:"Previous question", next:"Next question", finish:"Finish", pause:"Pause", resume:"Resume", restart:"Restart",
+    sound:on=>"Sound: "+(on?"on":"off"), fs:"Full screen", retain:"Remember:", timeup:"Time's up! Who can help?",
+    sec:"s", start:"Start the quiz", timePer:"Time per question:", sub:(s,l)=>`Review quiz: ${s}, ${l}.`,
+    howto:["Project the question and let the class look at the picture.","Choose a pupil to answer.","Show the answer, have the class repeat Zitouna's sentence, then move on."],
+    keys:"Keyboard or clicker: right arrow shows the answer then moves on, left arrow goes back. P: pause, R: restart, F: full screen.",
+    endTitle:"Well done, class! What we remember:", again:"Play again", back:"Back to the last question",
+    print:"Print", pmTitle:"What do you want to print?", cancel:"Cancel",
+    modes:{student:["Pupil worksheet","Questions and pictures, without the answers."], key:["Teacher's answer key","Correct answers and sentences to remember."], both:["Both","The worksheet, then the answer key on a new page."]},
+    fields:["Name:","Class:","Date:"], answerLine:"My answer:", keyTitle:"Answer key", colQ:"Question", colA:"Correct answer", colR:"Remember", recapTitle:"What we remember" }
+};
+const T = I18N[DATA.lang] || I18N.fr;
+document.documentElement.lang = DATA.lang || "fr";
+if (DATA.lang === "ar") document.documentElement.dir = "rtl";
+document.title = DATA.title;
+const Q = DATA.questions;
+const COLORS = ["var(--a)","var(--b)","var(--c)"];
+
+function mascotSVG(){
+  return `<svg class="zit" viewBox="0 0 140 172" aria-hidden="true">
+  <path d="M70 92 V114" stroke="#3E9B3A" stroke-width="9" stroke-linecap="round"/>
+  <path d="M70 106 C58 97 45 99 38 108 C49 116 62 114 70 106Z" fill="#37A047"/>
+  <path d="M70 102 C82 93 95 95 102 104 C91 112 78 110 70 102Z" fill="#37A047"/>
+  <path d="M68 27 C60 8 43 3 32 10 C39 25 54 31 68 27Z" fill="#2E8B3E"/>
+  <path d="M72 27 C80 8 97 3 108 10 C101 25 86 31 72 27Z" fill="#37A047"/>
+  <ellipse cx="70" cy="60" rx="44" ry="37" fill="#8BCB4A"/>
+  <ellipse cx="54" cy="42" rx="13" ry="7" fill="#fff" opacity=".35"/>
+  <g class="normal-only"><circle cx="54" cy="60" r="9" fill="#fff"/><circle cx="86" cy="60" r="9" fill="#fff"/>
+    <circle cx="56" cy="62" r="5" fill="#173B2A"/><circle cx="88" cy="62" r="5" fill="#173B2A"/>
+    <path d="M58 78 Q70 88 82 78" stroke="#173B2A" stroke-width="4" fill="none" stroke-linecap="round"/></g>
+  <g class="happy-only"><path d="M46 63 Q54 52 62 63" stroke="#173B2A" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+    <path d="M78 63 Q86 52 94 63" stroke="#173B2A" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+    <path d="M54 74 Q70 98 86 74Z" fill="#173B2A"/><path d="M61 83 Q70 90 79 83 Q70 86 61 83Z" fill="#FF7A9C"/></g>
+  <ellipse cx="41" cy="73" rx="7" ry="4.5" fill="#FF8FAB" opacity=".85"/><ellipse cx="99" cy="73" rx="7" ry="4.5" fill="#FF8FAB" opacity=".85"/>
+  <rect x="26" y="112" width="88" height="16" rx="7" fill="#1F57B8"/>
+  <path d="M32 128 H108 L99 170 H41Z" fill="#2A6FDB"/>
+  <path d="M70 135 l8 8 -8 8 -8 -8Z M50 141 l5 5 -5 5 -5 -5Z M90 141 l5 5 -5 5 -5 -5Z M70 155 l4 4 -4 4 -4 -4Z" fill="#fff"/></svg>`;
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+const $ = s => document.querySelector(s);
+const base = Math.max(15, DATA.timePerQuestion || 45);
+const state = { i:-1, revealed:false, dur:base, left:base, running:false, sound:true, visited:new Set(), timer:null };
+const CIRC = 2*Math.PI*34;
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const STEP = 74 / Q.length;
+
+function buildStatic(){
+  $("#title").textContent = DATA.title;
+  $("#sub").textContent = T.sub(DATA.subject, DATA.level);
+  $("#howto").innerHTML = T.howto.map(h => `<li>${esc(h)}</li>`).join("");
+  $("#keys").textContent = T.keys;
+  const opts = [...new Set([Math.max(15, base-15), base, base+15])];
+  $("#setting").innerHTML = esc(T.timePer) + " " + opts.map(v => `<button class="seg" data-dur="${v}" aria-pressed="${v===base}">${v} ${T.sec}</button>`).join("");
+  document.querySelectorAll(".seg").forEach(b => b.addEventListener("click", () => {
+    state.dur = +b.dataset.dur;
+    document.querySelectorAll(".seg").forEach(x => x.setAttribute("aria-pressed", x === b));
+  }));
+  $("#startBtn").textContent = T.start;
+  $("#restartBtn").textContent = T.restart;
+  $("#prevBtn").textContent = T.prev;
+  $("#fsBtn").textContent = T.fs;
+  $("#soundBtn").textContent = T.sound(true);
+  $("#endTitle").textContent = T.endTitle;
+  $("#again" + "Btn").textContent = T.again;
+  $("#backBtn").textContent = T.back;
+  $("#introGuide").innerHTML = mascotSVG();
+  $("#zitSlot").innerHTML = mascotSVG();
+  $("#endGuide").innerHTML = mascotSVG();
+  const box = $("#pleaves");
+  Q.forEach((_, k) => {
+    const b = document.createElement("button");
+    b.className = "pleaf " + (k % 2 ? "r" : "l");
+    b.style.bottom = `calc(${13 + k*STEP}% - 1.2vw)`;
+    b.setAttribute("aria-label", T.qnum(k+1, Q.length));
+    b.innerHTML = `<svg viewBox="0 0 60 30"><path d="M0 15 C12 0 40 -2 60 12 C42 30 14 30 0 15Z" fill="#37A047"/></svg>`;
+    b.addEventListener("click", () => { if (state.visited.has(k)) go(k); });
+    box.appendChild(b);
+  });
+}
+function renderProgress(){
+  const n = state.visited.size;
+  $("#pstem").style.height = (n === 0 ? 3 : 4 + n*STEP) + "%";
+  document.querySelectorAll(".pleaf").forEach((b, k) => {
+    b.classList.toggle("grown", state.visited.has(k));
+    b.classList.toggle("current", k === state.i);
+  });
+  $("#pflower").classList.toggle("bloom", state.i >= Q.length);
+}
+function render(){
+  const intro = state.i < 0, end = state.i >= Q.length;
+  $("#view-intro").hidden = !intro; $("#view-quiz").hidden = intro || end; $("#view-end").hidden = !end;
+  renderProgress();
+  if (intro || end){ stopTimer(); if (end) renderEnd(); return; }
+  const q = Q[state.i], r = state.revealed;
+  $("#qnum").textContent = T.qnum(state.i+1, Q.length);
+  const chip = $("#chip"); chip.textContent = T.types[q.type]; chip.className = "chip " + q.type;
+  const art = $("#art");
+  if (art.dataset.q !== String(state.i)){ art.innerHTML = q.svg; art.dataset.q = state.i; }
+  art.classList.toggle("revealed", r);
+  $("#qtext").textContent = q.text;
+  $("#qtext").classList.toggle("long", q.text.length > 70);
+  const ans = $("#answers");
+  if (q.type === "id"){
+    ans.className = "";
+    ans.innerHTML = `<div class="idbox ${r ? "shown" : ""}">${r ? esc(q.answer) : "? ? ?"}</div>`;
+  } else {
+    const opts = q.type === "vf" ? T.tf : q.options;
+    const good = q.type === "vf" ? (q.answer ? 0 : 1) : q.correct;
+    ans.className = "answers " + q.type;
+    ans.innerHTML = opts.map((t, k) => {
+      const cls = r ? (k === good ? "correct" : "dim") : "";
+      const letter = q.type === "qcm" ? `<span class="letter" style="background:${COLORS[k % 3]}">${T.letters[k % 3]}</span>` : "";
+      const style = q.type === "vf" ? `style="color:${k ? "var(--b)" : "var(--a)"}"` : "";
+      return `<div class="opt ${cls}" ${style}>${letter}<span>${esc(t)}</span></div>`;
+    }).join("");
+  }
+  $("#guide").classList.toggle("happy", r);
+  $("#bubble").innerHTML = r ? `<b>${esc(T.retain)}</b>${esc(q.explain)}` : esc(q.say);
+  $("#revealBtn").disabled = r;
+  $("#revealBtn").textContent = r ? T.revealed : T.reveal;
+  $("#prevBtn").disabled = state.i === 0;
+  $("#nextBtn").textContent = state.i === Q.length-1 ? T.finish : T.next;
+}
+function renderEnd(){
+  $("#points").innerHTML = (DATA.recap || []).map((p, k) =>
+    `<div class="point"><i style="background:${COLORS[k % 3]}">${k+1}</i><span>${esc(p)}</span></div>`).join("");
+  $("#endBubble").innerHTML = `<b>${esc(T.retain)}</b>${esc(DATA.recapSay || "")}`;
+}
+function updateTimer(){
+  const ring = $("#ring");
+  $("#ringNum").textContent = state.left;
+  $("#ringFg").style.strokeDasharray = CIRC;
+  $("#ringFg").style.strokeDashoffset = CIRC * (1 - state.left/state.dur);
+  ring.classList.toggle("soon", state.left <= 10 && state.left > 0);
+  ring.classList.toggle("over", state.left === 0);
+  $("#pauseBtn").textContent = (state.running || state.left === 0 || state.revealed) ? T.pause : T.resume;
+  $("#pauseBtn").disabled = state.left === 0 || state.revealed;
+}
+function startTimer(){ stopTimer(); state.left = state.dur; state.running = true; state.timer = setInterval(tick, 1000); updateTimer(); }
+function stopTimer(){ clearInterval(state.timer); state.timer = null; state.running = false; }
+function tick(){
+  if (!state.running) return;
+  state.left = Math.max(0, state.left - 1);
+  if (state.left === 0){ stopTimer(); if (!state.revealed){ $("#bubble").textContent = T.timeup; tone([523,392]); } }
+  updateTimer();
+}
+function togglePause(){
+  if (state.left === 0 || state.revealed) return;
+  state.running = !state.running;
+  if (state.running && !state.timer) state.timer = setInterval(tick, 1000);
+  updateTimer();
+}
+function tone(freqs){
+  if (!state.sound) return;
+  try {
+    const ctx = tone.ctx || (tone.ctx = new (window.AudioContext || window.webkitAudioContext)());
+    freqs.forEach((f, k) => {
+      const o = ctx.createOscillator(), g = ctx.createGain(), t = ctx.currentTime + k*0.16;
+      o.type = "sine"; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.22, t+0.02); g.gain.exponentialRampToValueAtTime(0.0001, t+0.22);
+      o.connect(g).connect(ctx.destination); o.start(t); o.stop(t+0.25);
+    });
+  } catch(e){}
+}
+function burst(){
+  if (reduced) return;
+  const cols = ["#FF8A3D","#7B61FF","#12A89C","#FF5E8A","#FFC83D","#37A047"];
+  for (let k = 0; k < 26; k++){
+    const el = document.createElement("div");
+    el.className = "fall";
+    el.style.left = Math.random()*100 + "vw";
+    el.style.setProperty("--drift", (Math.random()*160 - 80) + "px");
+    el.style.setProperty("--rot", (Math.random()*720 - 360) + "deg");
+    el.style.animationDuration = (1.8 + Math.random()*1.4) + "s";
+    el.style.animationDelay = (Math.random()*0.4) + "s";
+    el.innerHTML = `<svg viewBox="0 0 60 30" width="34" height="20"><path d="M0 15 C12 0 40 -2 60 12 C42 30 14 30 0 15Z" fill="${cols[k % cols.length]}"/></svg>`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 3800);
+  }
+}
+function go(k){
+  state.i = k; state.revealed = false;
+  if (k >= 0 && k < Q.length){ state.visited.add(k); render(); startTimer(); } else render();
+}
+function reveal(){
+  if (state.i < 0 || state.i >= Q.length || state.revealed) return;
+  state.revealed = true; stopTimer(); render(); updateTimer(); burst(); tone([523,659,784]);
+}
+function next(){ if (state.i < Q.length) go(state.i + 1); }
+function prev(){ if (state.i > 0) go(state.i - 1); }
+function advance(){
+  if (state.i < 0) return go(0);
+  if (state.i >= Q.length) return;
+  state.revealed ? next() : reveal();
+}
+function fullscreen(){
+  try { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); } catch(e){}
+}
+$("#startBtn").addEventListener("click", () => go(0));
+$("#revealBtn").addEventListener("click", reveal);
+$("#nextBtn").addEventListener("click", next);
+$("#prevBtn").addEventListener("click", prev);
+$("#pauseBtn").addEventListener("click", togglePause);
+$("#restartBtn").addEventListener("click", () => { if (!state.revealed) startTimer(); });
+$("#fsBtn").addEventListener("click", fullscreen);
+$("#soundBtn").addEventListener("click", e => { state.sound = !state.sound; e.currentTarget.textContent = T.sound(state.sound); });
+$("#againBtn").addEventListener("click", () => { state.visited.clear(); go(-1); });
+$("#backBtn").addEventListener("click", () => go(Q.length - 1));
+document.addEventListener("keydown", e => {
+  if (!$("#printModal").hidden){ if (e.key === "Escape") closePrint(); return; }
+  const onButton = e.target.tagName === "BUTTON";
+  switch (e.key){
+    case "ArrowRight": case "PageDown": e.preventDefault(); advance(); break;
+    case "ArrowLeft": case "PageUp": e.preventDefault(); prev(); break;
+    case " ": case "Enter": if (!onButton){ e.preventDefault(); advance(); } break;
+    case "p": case "P": togglePause(); break;
+    case "r": case "R": if (!state.revealed && state.i >= 0 && state.i < Q.length) startTimer(); break;
+    case "f": case "F": fullscreen(); break;
+  }
+});
+/* ---------- Impression ---------- */
+function answerOf(q){ return q.type === "qcm" ? `${T.letters[q.correct % 3]}. ${q.options[q.correct]}` : q.type === "vf" ? T.tf[q.answer ? 0 : 1] : q.answer; }
+function studentSheet(){
+  const head = `<div class="p-head">${mascotSVG()}<div><h1>${esc(DATA.title)}</h1><p>${esc(T.sub(DATA.subject, DATA.level))}</p></div></div>
+    <div class="p-fields">${T.fields.map(f => `<span>${esc(f)}</span>`).join("")}</div>`;
+  const qs = Q.map((q, k) => {
+    let a = "";
+    if (q.type === "qcm") a = `<div class="p-opts">${q.options.map((o, i) => `<div class="p-opt"><i></i><b style="background:${COLORS[i % 3]}">${T.letters[i % 3]}</b><span>${esc(o)}</span></div>`).join("")}</div>`;
+    else if (q.type === "vf") a = `<div class="p-vf">${T.tf.map(t => `<div class="p-opt"><i></i><span>${esc(t)}</span></div>`).join("")}</div>`;
+    else a = `<div><div>${esc(T.answerLine)}</div><div class="p-line"></div></div>`;
+    return `<div class="p-q">${q.svg}<div><div class="p-text"><span class="p-num">${k+1}</span>${esc(q.text)}</div>${a}</div></div>`;
+  }).join("");
+  return `<section class="p-sheet">${head}${qs}</section>`;
+}
+function keySheet(breakBefore){
+  const rows = Q.map((q, k) => `<tr><td>${k+1}. ${esc(q.text)}</td><td class="ok">${esc(answerOf(q))}</td><td>${esc(q.explain)}</td></tr>`).join("");
+  const recap = (DATA.recap || []).length ? `<h2>${esc(T.recapTitle)}</h2><ul>${DATA.recap.map(r => `<li>${esc(r)}</li>`).join("")}</ul>${DATA.recapSay ? `<p>${esc(DATA.recapSay)}</p>` : ""}` : "";
+  return `<section class="p-sheet p-key ${breakBefore ? "p-break" : ""}"><div class="p-head">${mascotSVG()}<div><h1>${esc(T.keyTitle)} : ${esc(DATA.title)}</h1><p>${esc(T.sub(DATA.subject, DATA.level))}</p></div></div>
+    <table><thead><tr><th>${esc(T.colQ)}</th><th>${esc(T.colA)}</th><th>${esc(T.colR)}</th></tr></thead><tbody>${rows}</tbody></table>${recap}</section>`;
+}
+function openPrint(){ stopTimer(); $("#printModal").hidden = false; $("#printModal .choice").focus(); }
+function closePrint(){ $("#printModal").hidden = true; }
+function doPrint(mode){
+  $("#printArea").innerHTML = mode === "student" ? studentSheet() : mode === "key" ? keySheet(false) : studentSheet() + keySheet(true);
+  closePrint();
+  setTimeout(() => window.print(), 150);
+}
+$("#pmTitle").textContent = T.pmTitle;
+$("#pmCancel").textContent = T.cancel;
+document.querySelectorAll("#printModal .choice").forEach(b => {
+  const [t, d] = T.modes[b.dataset.mode];
+  b.innerHTML = `${esc(t)}<small>${esc(d)}</small>`;
+  b.addEventListener("click", () => doPrint(b.dataset.mode));
+});
+["#printBtn1","#printBtn2"].forEach(id => { $(id).textContent = T.print; $(id).addEventListener("click", openPrint); });
+$("#pmCancel").addEventListener("click", closePrint);
+$("#printModal").addEventListener("click", e => { if (e.target.id === "printModal") closePrint(); });
+
+buildStatic();
+render();
+if (location.hash === "#imprimer") openPrint();
+</script>
+</body>
+</html>

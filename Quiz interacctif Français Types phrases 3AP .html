@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quiz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --sky1:#7FD6F7; --sky2:#E3F7FF; --stem:#3E9B3A; --sun:#FFC83D; --ink:#173B2A;
+  --a:#FF8A3D; --b:#7B61FF; --c:#12A89C; --ok:#27AE60; --warn:#F2994A; --late:#E5484D;
+  --font:"Andika","Verdana","Trebuchet MS",sans-serif;
+}
+html[lang="ar"]{--font:"Tajawal","Segoe UI","Tahoma","Arial",sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:var(--font);color:var(--ink);overflow-x:hidden;overflow-y:auto;
+  background:linear-gradient(180deg,var(--sky1) 0%,var(--sky2) 70%,#CDEFB4 70%,#9ADB78 100%)}
+button{font-family:inherit;cursor:pointer;color:inherit}
+button:focus-visible{outline:5px solid var(--ink);outline-offset:3px}
+[hidden]{display:none!important}
+#app{display:grid;grid-template-columns:clamp(64px,6.5vw,120px) 1fr;height:100vh;height:100dvh}
+
+/* Tige de progression */
+#progress{position:relative}
+#pstem{position:absolute;left:50%;bottom:10%;width:9px;margin-left:-4.5px;border-radius:6px;background:var(--stem);transition:height .8s ease}
+.pleaf{position:absolute;width:44%;aspect-ratio:2/1;border:0;background:none;padding:0;transform:scale(0);transition:transform .6s cubic-bezier(.3,1.6,.5,1)}
+.pleaf.l{right:50%;transform-origin:100% 50%}
+.pleaf.r{left:50%;transform-origin:0 50%}
+.pleaf svg{width:100%;height:100%;display:block}
+.pleaf.l svg{transform:scaleX(-1)}
+.pleaf.grown{transform:scale(1)}
+.pleaf.current{transform:scale(1.3)}
+.pleaf.current svg path{fill:var(--sun)}
+#ppot{position:absolute;left:50%;bottom:1.5%;width:62%;transform:translateX(-50%)}
+#pflower{position:absolute;left:50%;bottom:86%;width:60%;transform:translateX(-50%) scale(0);transition:transform .8s cubic-bezier(.3,1.6,.5,1)}
+#pflower.bloom{transform:translateX(-50%) scale(1)}
+
+#stage{min-width:0;padding:2.2vh 2.4vw 2vh 1vw;display:flex;flex-direction:column}
+html[dir="rtl"] #stage{padding:2.2vh 1vw 2vh 2.4vw}
+.view{flex:1;min-height:0;display:flex;flex-direction:column}
+.top{display:flex;align-items:center;gap:1.2vw;margin-bottom:1.6vh}
+.qnum{background:var(--ink);color:#fff;font-weight:700;font-size:calc(clamp(18px,min(1.9vw,3.38vh),34px) * var(--fs,1));padding:.35em .9em;border-radius:999px}
+.chip{font-weight:700;font-size:calc(clamp(16px,min(1.6vw,2.85vh),30px) * var(--fs,1));padding:.35em .9em;border-radius:999px;background:#fff;border:3px solid currentColor}
+.chip.qcm{color:#5A3FD9}.chip.vf{color:#C0561A}.chip.id{color:#0E7F76}
+.spacer{flex:1}
+.timer{display:flex;align-items:center;gap:.8vw}
+.ring{position:relative;width:clamp(52px,8.5vh,110px);aspect-ratio:1}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:9}
+.ring .bg{stroke:rgba(255,255,255,.8)}
+.ring .fg{stroke:#4FB23A;stroke-linecap:round;transition:stroke-dashoffset 1s linear,stroke .3s}
+.ring.soon .fg{stroke:var(--warn)}
+.ring.over .fg{stroke:var(--late)}
+.ring span{position:absolute;inset:0;display:grid;place-items:center;font-weight:700;font-size:calc(clamp(20px,min(2.4vw,4.27vh),40px) * var(--fs,1))}
+.ring.over span{color:var(--late);animation:shake .5s 2}
+.tbtn{border:3px solid var(--ink);background:#fff;border-radius:14px;font-weight:700;font-size:calc(clamp(14px,min(1.2vw,2.14vh),22px) * var(--fs,1));padding:.4em .8em}
+
+.content{flex:1;min-height:0;display:grid;grid-template-columns:1.05fr 1fr;gap:2.4vw}
+.art{min-height:0;background:rgba(255,255,255,.6);border:5px solid #fff;border-radius:36px;display:flex;align-items:center;justify-content:center;padding:1.5vh 1vw;overflow:hidden}
+.art svg{width:100%;height:100%;max-height:70vh}
+.right{min-height:0;display:flex;flex-direction:column;justify-content:center;gap:2.2vh}
+.qtext{font-size:calc(clamp(26px,min(3vw,5.34vh),58px) * var(--fs,1));font-weight:700;line-height:1.2;max-width:27ch}
+.qtext.long{font-size:calc(clamp(22px,min(2.45vw,4.36vh),48px) * var(--fs,1));max-width:30ch}
+.answers{display:grid;gap:1.5vh}
+.answers.vf{grid-template-columns:1fr 1fr;gap:1.5vw}
+.opt{display:flex;align-items:center;gap:.8em;background:#fff;border-radius:22px;padding:.45em .7em;font-size:calc(clamp(20px,min(2.2vw,3.92vh),42px) * var(--fs,1));border:5px solid transparent;box-shadow:0 7px 0 rgba(23,59,42,.18);transition:opacity .4s,transform .4s,border-color .4s}
+.opt .letter{flex:none;width:1.7em;height:1.7em;border-radius:50%;color:#fff;display:grid;place-items:center;font-weight:700}
+.answers.vf .opt{justify-content:center;font-weight:700;font-size:calc(clamp(28px,min(3.2vw,5.7vh),60px) * var(--fs,1));padding:.6em .4em}
+.opt.correct{border-color:var(--ok);transform:scale(1.05);animation:pop .6s}
+.opt.correct::after{content:"";flex:none;margin-inline-start:auto;width:1.3em;height:1.3em;border-radius:50%;
+  background:var(--ok) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5' fill='none' stroke='white' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/70% no-repeat}
+.answers.vf .opt.correct::after{margin-inline-start:.4em}
+.opt.dim{opacity:.3}
+.idbox{background:#fff;border:5px dashed #4FB23A;border-radius:26px;text-align:center;font-weight:700;font-size:calc(clamp(30px,min(4vw,7.12vh),76px) * var(--fs,1));padding:.3em .4em;color:#9BB8A5;letter-spacing:.2em}
+.idbox.shown{border-style:solid;border-color:var(--ok);color:#2E8B3E;letter-spacing:0;animation:pop .6s}
+
+.guide{display:flex;align-items:flex-end;gap:1vw}
+.zit{width:calc(clamp(70px,min(9vw,16vh),160px) * var(--fs,1));flex:none;animation:bob 3s ease-in-out infinite;overflow:visible}
+.zit .happy-only{display:none}
+.happy .zit .happy-only{display:inline}
+.happy .zit .normal-only{display:none}
+.happy .zit{animation:jump .55s ease 2}
+.bubble{position:relative;background:#fff;border-radius:24px;padding:.6em .9em;font-size:calc(clamp(17px,min(1.7vw,3.03vh),32px) * var(--fs,1));line-height:1.3;box-shadow:0 6px 0 rgba(23,59,42,.15);margin-bottom:3vh;max-width:30ch}
+.bubble::before{content:"";position:absolute;left:-14px;bottom:18px;border:10px solid transparent;border-right:16px solid #fff;border-left:0}
+html[dir="rtl"] .bubble::before{left:auto;right:-14px;border-right:0;border-left:16px solid #fff}
+.bubble b{display:block;color:#2E8B3E;font-size:.8em}
+.happy .bubble{outline:5px solid var(--sun)}
+
+.controls{display:flex;align-items:center;gap:1vw;margin-top:1.8vh;flex-wrap:wrap}
+.btn{border:0;border-radius:18px;font-weight:700;font-size:calc(clamp(16px,min(1.5vw,2.67vh),28px) * var(--fs,1));padding:.55em 1.1em;background:#fff;box-shadow:0 6px 0 rgba(23,59,42,.2)}
+.btn:active{transform:translateY(3px);box-shadow:0 3px 0 rgba(23,59,42,.2)}
+.btn.reveal{background:var(--sun);font-size:calc(clamp(20px,min(1.9vw,3.38vh),36px) * var(--fs,1));padding:.5em 1.4em}
+.btn.reveal:disabled{background:#E7E2C8;color:#7C8A7F;cursor:default}
+.btn.next{background:var(--ink);color:#fff}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.small{font-size:calc(clamp(13px,min(1.1vw,1.96vh),20px) * var(--fs,1));padding:.5em .8em}
+
+.center{flex:1;display:grid;grid-template-columns:auto 1fr;align-items:center;gap:3vw;padding:0 3vw}
+.center .zit{width:calc(clamp(110px,min(20vw,36vh),340px) * var(--fs,1))}
+h1{font-size:calc(clamp(32px,min(4.2vw,7.48vh),84px) * var(--fs,1));line-height:1.1;margin-bottom:.3em}
+.sub{font-size:calc(clamp(18px,min(2vw,3.56vh),36px) * var(--fs,1));margin-bottom:1.2em}
+.howto{background:rgba(255,255,255,.75);border-radius:24px;padding:1em 1.3em;font-size:calc(clamp(15px,min(1.35vw,2.4vh),24px) * var(--fs,1));line-height:1.45;max-width:44em;margin-bottom:1.2em}
+.howto ol{padding-inline-start:1.3em}
+.howto p{margin-top:.5em;color:#3E5A4A}
+.setting{display:flex;align-items:center;gap:.7em;flex-wrap:wrap;font-size:calc(clamp(16px,min(1.5vw,2.67vh),28px) * var(--fs,1));font-weight:700;margin-bottom:1.1em}
+.seg{border:3px solid var(--ink);background:#fff;border-radius:999px;padding:.25em .9em;font-weight:700;font-size:inherit}
+.seg[aria-pressed="true"]{background:var(--ink);color:#fff}
+.btn.start{background:var(--sun);font-size:calc(clamp(22px,min(2.3vw,4.09vh),44px) * var(--fs,1));padding:.5em 1.4em}
+.recap{flex:1;min-height:0;display:grid;grid-template-columns:auto 1fr;gap:3vw;align-items:center;padding:0 2vw}
+.recap .zit{width:calc(clamp(100px,min(16vw,28vh),280px) * var(--fs,1))}
+.recap h2{font-size:calc(clamp(28px,min(3.4vw,6.05vh),64px) * var(--fs,1));margin-bottom:.5em}
+.points{display:grid;grid-template-columns:1fr 1fr;gap:1.4vw;margin-bottom:2.5vh}
+.point{background:#fff;border-radius:24px;padding:.6em .8em;display:flex;align-items:center;gap:.6em;font-weight:700;font-size:calc(clamp(17px,min(1.8vw,3.2vh),34px) * var(--fs,1));box-shadow:0 6px 0 rgba(23,59,42,.15);line-height:1.25}
+.point i{flex:none;font-style:normal;width:1.7em;height:1.7em;border-radius:50%;color:#fff;display:grid;place-items:center}
+.recap .bubble{max-width:40ch}
+
+.fall{position:fixed;top:-60px;width:28px;height:28px;pointer-events:none;z-index:50;animation:fall linear forwards}
+
+/* Classes d'animation utilisables dans les illustrations */
+.art svg .float{animation:floaty 2.6s ease-in-out infinite}
+.art svg .bounce{animation:bouncy 1.4s ease-in-out infinite}
+.art svg .spin{transform-box:fill-box;transform-origin:center;animation:spin 8s linear infinite}
+.art svg .pulse{transform-box:fill-box;transform-origin:center;animation:pulse 1.6s ease-in-out infinite}
+.art svg .sway{transform-box:fill-box;transform-origin:50% 100%;animation:sway 3.5s ease-in-out infinite}
+.art svg .blink{animation:glow .7s ease-in-out infinite alternate}
+.art svg .reveal-only{opacity:0}
+.art.revealed svg .reveal-only{opacity:1;transform-box:fill-box;transform-origin:center;animation:pop .7s both}
+.art svg .hide-on-reveal{transition:opacity .5s}
+.art.revealed svg .hide-on-reveal{opacity:0}
+.art .emoji{font-size:170px}
+
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes bouncy{0%,100%{transform:translateY(0)}40%{transform:translateY(-18px)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+@keyframes sway{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
+@keyframes glow{from{opacity:1;filter:drop-shadow(0 0 3px #fff) drop-shadow(0 0 10px #FFE45C)}to{opacity:.5;filter:none}}
+@keyframes pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.08);opacity:1}100%{transform:scale(1);opacity:1}}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes jump{0%,100%{transform:translateY(0)}40%{transform:translateY(-22px) rotate(-4deg)}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+@keyframes fall{to{transform:translate(var(--drift),110vh) rotate(var(--rot))}}
+/* Écrans trop petits : la page défile au lieu d'être coupée */
+html.tall #app{height:auto;min-height:100vh;min-height:100dvh}
+html.tall .content{grid-template-rows:auto}
+html.tall .art svg{max-height:60vh}
+.fsTop{border:3px solid var(--ink);background:var(--sun);border-radius:14px;font-weight:700;font-size:clamp(14px,1.2vw,22px);padding:.4em .8em}
+.btn.fsIntro{background:#fff;border:3px solid var(--ink);margin-inline-start:.6em}
+/* Impression */
+.btn.print{background:#fff;border:3px solid var(--ink)}
+#printModal{position:fixed;inset:0;background:rgba(23,59,42,.55);display:grid;place-items:center;z-index:100}
+#printModal .box{background:#fff;border-radius:28px;padding:28px 32px;max-width:560px;width:92%;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+#printModal h3{font-size:clamp(22px,2vw,32px);margin-bottom:16px}
+#printModal .choices{display:grid;gap:12px;margin-bottom:18px}
+#printModal .choice{text-align:start;border:3px solid var(--ink);background:#fff;border-radius:18px;padding:.7em 1em;font-weight:700;font-size:clamp(17px,1.4vw,24px)}
+#printModal .choice small{display:block;font-weight:400;font-size:.75em;color:#4F6B5B}
+#printModal .choice:hover{background:#FFF6D6}
+#printArea{display:none}
+.p-sheet{color:#173B2A;font-family:var(--font);font-size:12.5pt;line-height:1.35}
+.p-head{display:flex;align-items:flex-start;gap:5mm;border-bottom:1mm solid #FFC83D;padding-bottom:3mm;margin-bottom:5mm}
+.p-head .zit{width:18mm;animation:none}
+.p-head h1{font-size:19pt;margin:0 0 1mm}
+.p-head p{font-size:11pt;color:#4F6B5B}
+.p-fields{display:flex;gap:6mm;flex-wrap:wrap;margin:0 0 5mm;font-weight:700}
+.p-fields span{flex:1;min-width:40mm;border-bottom:.4mm dotted #173B2A;padding-bottom:1mm}
+.p-q{display:grid;grid-template-columns:58mm 1fr;gap:5mm;align-items:center;break-inside:avoid;page-break-inside:avoid;border:.5mm solid #CFE3D6;border-radius:5mm;padding:3.5mm;margin-bottom:4mm}
+.p-q svg{width:100%;height:auto;display:block;border-radius:3mm;background:#F3FAFF}
+.p-num{display:inline-grid;place-items:center;width:8mm;height:8mm;border-radius:50%;background:#173B2A;color:#fff;font-weight:700;margin-inline-end:2mm;font-size:11pt}
+.p-text{font-weight:700;font-size:13.5pt;margin-bottom:3mm}
+.p-opts{display:grid;gap:2mm}
+.p-opt{display:flex;align-items:center;gap:3mm}
+.p-opt i{flex:none;width:5mm;height:5mm;border:.5mm solid #173B2A;border-radius:50%}
+.p-opt b{flex:none;width:7mm;height:7mm;border-radius:50%;color:#fff;display:grid;place-items:center;font-size:10pt}
+.p-vf{display:flex;gap:10mm}
+.p-line{border-bottom:.4mm dotted #173B2A;height:9mm}
+.p-sheet .reveal-only{display:none}
+.p-key table{width:100%;border-collapse:collapse;font-size:11.5pt}
+.p-key th,.p-key td{border:.4mm solid #CFE3D6;padding:2mm 2.5mm;text-align:start;vertical-align:top}
+.p-key th{background:#F1FAEC}
+.p-key td.ok{font-weight:700;color:#1E7F3E;white-space:nowrap}
+.p-key h2{font-size:15pt;margin:6mm 0 3mm}
+.p-key ul{padding-inline-start:6mm}
+.p-break{break-before:page;page-break-before:always}
+@media print{
+  @page{size:A4;margin:12mm}
+  html,body{height:auto;background:#fff!important;overflow:visible!important}
+  #app,#printModal,.fall{display:none!important}
+  #printArea{display:block}
+  *{animation:none!important;transition:none!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+@media (max-width:820px){.content,.recap,.center{grid-template-columns:1fr}body{overflow:auto}}
+</style>
+</head>
+<body>
+<div id="app">
+  <nav id="progress">
+    <div id="pstem"></div>
+    <div id="pleaves"></div>
+    <svg id="pflower" viewBox="-40 -40 80 80" aria-hidden="true">
+      <g fill="#FF5E8A"><ellipse cx="0" cy="-20" rx="12" ry="19"/><ellipse cx="0" cy="-20" rx="12" ry="19" transform="rotate(72)"/><ellipse cx="0" cy="-20" rx="12" ry="19" transform="rotate(144)"/><ellipse cx="0" cy="-20" rx="12" ry="19" transform="rotate(216)"/><ellipse cx="0" cy="-20" rx="12" ry="19" transform="rotate(288)"/></g>
+      <circle r="13" fill="#FFC83D"/>
+    </svg>
+    <svg id="ppot" viewBox="0 0 80 60" aria-hidden="true">
+      <rect x="4" y="4" width="72" height="13" rx="6" fill="#1F57B8"/>
+      <path d="M9 17 H71 L63 58 H17Z" fill="#2A6FDB"/>
+      <path d="M40 26 l7 7 -7 7 -7 -7Z M24 32 l4 4 -4 4 -4 -4Z M56 32 l4 4 -4 4 -4 -4Z" fill="#fff"/>
+    </svg>
+  </nav>
+  <main id="stage">
+    <section class="view" id="view-intro">
+      <div class="center">
+        <div class="guide" id="introGuide"></div>
+        <div>
+          <h1 id="title"></h1>
+          <p class="sub" id="sub"></p>
+          <div class="howto"><ol id="howto"></ol><p id="keys"></p></div>
+          <div class="setting" id="setting"></div>
+          <button class="btn start" id="startBtn"></button>
+          <button class="btn fsIntro" id="fsIntro"></button>
+          <button class="btn print" id="printBtn1"></button>
+        </div>
+      </div>
+    </section>
+    <section class="view" id="view-quiz" hidden>
+      <div class="top">
+        <span class="qnum" id="qnum"></span>
+        <span class="chip" id="chip"></span>
+        <span class="spacer"></span>
+        <div class="timer">
+          <button class="fsTop" id="fsTop"></button>
+          <button class="tbtn" id="pauseBtn"></button>
+          <button class="tbtn" id="restartBtn"></button>
+          <div class="ring" id="ring" role="timer">
+            <svg viewBox="0 0 80 80"><circle class="bg" cx="40" cy="40" r="34"/><circle class="fg" id="ringFg" cx="40" cy="40" r="34"/></svg>
+            <span id="ringNum"></span>
+          </div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="art" id="art"></div>
+        <div class="right">
+          <p class="qtext" id="qtext"></p>
+          <div id="answers"></div>
+          <div class="guide" id="guide"><div id="zitSlot"></div><p class="bubble" id="bubble" aria-live="polite"></p></div>
+        </div>
+      </div>
+      <div class="controls">
+        <button class="btn" id="prevBtn"></button>
+        <button class="btn reveal" id="revealBtn"></button>
+        <button class="btn next" id="nextBtn"></button>
+        <span class="spacer"></span>
+        <button class="btn small" id="soundBtn"></button>
+        <button class="btn small" id="fsBtn"></button>
+      </div>
+    </section>
+    <section class="view" id="view-end" hidden>
+      <div class="recap">
+        <div class="guide happy" id="endGuide"></div>
+        <div>
+          <h2 id="endTitle"></h2>
+          <div class="points" id="points"></div>
+          <p class="bubble" id="endBubble"></p>
+          <div class="controls">
+            <button class="btn" id="backBtn"></button>
+            <button class="btn next" id="againBtn"></button>
+            <button class="btn print" id="printBtn2"></button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+<div id="printModal" hidden role="dialog" aria-modal="true" aria-labelledby="pmTitle">
+  <div class="box">
+    <h3 id="pmTitle"></h3>
+    <div class="choices">
+      <button class="choice" data-mode="student"></button>
+      <button class="choice" data-mode="key"></button>
+      <button class="choice" data-mode="both"></button>
+    </div>
+    <button class="btn" id="pmCancel"></button>
+  </div>
+</div>
+<div id="printArea" aria-hidden="true"></div>
+<script>
+const DATA = {"lang":"fr","title":"Les types de phrases","level":"3e année primaire","subject":"Langue française","timePerQuestion":45,"questions":[{"type":"qcm","text":"Quel type de phrase pose une question ?","options":["Interrogative","Déclarative","Exclamative"],"correct":0,"say":"Zitouna t’encourage : pense à ce que fait la phrase !","explain":"Une phrase interrogative pose une question.","svg":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 440 380\" aria-hidden=\"true\">\n  \u003crect width=\"440\" height=\"380\" fill=\"#DDF3FF\"/>\n  \u003ccircle cx=\"63\" cy=\"78\" r=\"15\" fill=\"#FFFFFF\" opacity=\"0.7\"/>\n  \u003ccircle cx=\"388\" cy=\"66\" r=\"10\" fill=\"#FFFFFF\" opacity=\"0.7\"/>\n  \u003ccircle cx=\"397\" cy=\"307\" r=\"17\" fill=\"#FFFFFF\" opacity=\"0.7\"/>\n\n  \u003cg class=\"sway\">\n    \u003cpath d=\"M35 154 Q35 124 67 124 H94 Q126 124 126 156 V196 Q126 226 94 226 H78 L55 247 L58 222 Q35 214 35 190 Z\" fill=\"#FF8A3D\" stroke=\"#173B2A\" stroke-width=\"5\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M163 154 Q163 124 195 124 H222 Q254 124 254 156 V196 Q254 226 222 226 H206 L183 247 L186 222 Q163 214 163 190 Z\" fill=\"#7B61FF\" stroke=\"#173B2A\" stroke-width=\"5\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M291 154 Q291 124 323 124 H350 Q382 124 382 156 V196 Q382 226 350 226 H334 L311 247 L314 222 Q291 214 291 190 Z\" fill=\"#12A89C\" stroke=\"#173B2A\" stroke-width=\"5\" stroke-linejoin=\"round\"/>\n  \u003c/g>\n\n  \u003cg class=\"reveal-only\">\n    \u003cpath d=\"M67 164 C67 148 91 145 98 158 C105 171 87 176 82 185\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"7\" stroke-linecap=\"round\"/>\n    \u003ccircle cx=\"82\" cy=\"198\" r=\"4.5\" fill=\"#173B2A\"/>\n  \u003c/g>\n\u003c/svg>"},{"type":"vf","text":"La phrase « Salma lit un livre. » donne une information.","answer":true,"say":"Zitouna t’encourage : relis la phrase calmement.","explain":"Une phrase déclarative donne une information.","svg":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 440 380\" aria-hidden=\"true\">\n  \u003crect width=\"440\" height=\"380\" fill=\"#FFF9EA\"/>\n  \u003cellipse cx=\"220\" cy=\"344\" rx=\"155\" ry=\"19\" fill=\"#E5EFD9\"/>\n\n  \u003crect x=\"112\" y=\"244\" width=\"216\" height=\"76\" rx=\"31\" fill=\"#7B61FF\" stroke=\"#173B2A\" stroke-width=\"5\"/>\n  \u003cpath d=\"M151 298 Q137 318 119 327 M289 298 Q303 318 321 327\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"6\" stroke-linecap=\"round\"/>\n\n  \u003cpath d=\"M150 93 Q145 35 218 35 Q294 35 288 107 L280 171 L155 171Z\" fill=\"#173B2A\"/>\n  \u003ccircle cx=\"220\" cy=\"111\" r=\"65\" fill=\"#C98258\" stroke=\"#173B2A\" stroke-width=\"5\"/>\n  \u003cpath d=\"M156 99 Q165 43 219 45 Q263 43 282 91 Q257 86 241 67 Q207 104 156 99Z\" fill=\"#173B2A\"/>\n  \u003cpath d=\"M185 120 Q190 116 195 120 M244 120 Q249 116 254 120\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"5\" stroke-linecap=\"round\"/>\n  \u003cpath d=\"M207 145 Q220 156 233 145\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linecap=\"round\"/>\n\n  \u003cpath d=\"M180 169 Q220 154 260 169 L280 265 Q220 294 160 265Z\" fill=\"#FF8A3D\" stroke=\"#173B2A\" stroke-width=\"5\"/>\n  \u003cpath d=\"M170 191 Q144 205 144 245 L183 263 M270 191 Q296 205 296 245 L257 263\" fill=\"none\" stroke=\"#C98258\" stroke-width=\"19\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n  \u003cpath d=\"M170 191 Q144 205 144 245 M270 191 Q296 205 296 245\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"5\" stroke-linecap=\"round\"/>\n\n  \u003cpath d=\"M220 227 Q188 208 148 224 L150 291 Q190 275 220 299 Q250 275 290 291 L292 224 Q252 208 220 227Z\" fill=\"#FFFDF4\" stroke=\"#173B2A\" stroke-width=\"5\" stroke-linejoin=\"round\"/>\n  \u003cpath d=\"M220 227 L220 299 M164 241 Q187 232 207 245 M164 258 Q187 249 207 261 M233 245 Q253 232 276 241 M233 261 Q253 249 276 258\" fill=\"none\" stroke=\"#3BA7F0\" stroke-width=\"3\" stroke-linecap=\"round\"/>\n  \u003cellipse cx=\"170\" cy=\"271\" rx=\"15\" ry=\"10\" fill=\"#C98258\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003cellipse cx=\"270\" cy=\"271\" rx=\"15\" ry=\"10\" fill=\"#C98258\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n\n  \u003cg class=\"float\">\n    \u003cpath d=\"M329 167 L335 181 L350 186 L335 192 L329 207 L323 192 L308 186 L323 181Z\" fill=\"#FFC83D\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n  \u003c/g>\n\n  \u003cg class=\"reveal-only\">\n    \u003cpath d=\"M305 45 Q305 28 324 28 H382 Q401 28 401 47 V88 Q401 107 382 107 H352 L333 125 L333 107 H324 Q305 107 305 88Z\" fill=\"#37A047\" stroke=\"#173B2A\" stroke-width=\"5\" stroke-linejoin=\"round\"/>\n    \u003ccircle cx=\"354\" cy=\"67\" r=\"11\" fill=\"#FFFDF4\"/>\n  \u003c/g>\n\u003c/svg>"},{"type":"id","text":"Quel est le type de la phrase « Où est mon sac ? » ?","answer":"interrogative","say":"Zitouna t’encourage : regarde le signe à la fin.","explain":"Une phrase interrogative se termine par un point d’interrogation.","svg":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 440 380\" aria-hidden=\"true\">\n  \u003crect width=\"440\" height=\"380\" fill=\"#FFF9E9\"/>\n  \u003cellipse cx=\"220\" cy=\"340\" rx=\"181\" ry=\"17\" fill=\"#DDEEDB\"/>\n\n  \u003cg fill=\"#FF8A3D\" stroke=\"#173B2A\" stroke-width=\"5\" stroke-linejoin=\"round\">\n    \u003crect x=\"265\" y=\"188\" width=\"136\" height=\"20\" rx=\"10\"/>\n    \u003cpath d=\"M280 207v108h15V207M371 207v108h15V207\"/>\n  \u003c/g>\n\n  \u003cpath d=\"M72 42h296a22 22 0 0 1 22 22v70a22 22 0 0 1-22 22H205l-22 23-5-23H72a22 22 0 0 1-22-22V64a22 22 0 0 1 22-22Z\" fill=\"#FFFFFF\" stroke=\"#173B2A\" stroke-width=\"5\" stroke-linejoin=\"round\"/>\n\n  \u003cg class=\"sway\">\n    \u003cellipse cx=\"189\" cy=\"329\" rx=\"91\" ry=\"11\" fill=\"#B9D7AE\"/>\n    \u003cpath d=\"M150 220v-20a40 40 0 0 1 80 0v20\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"12\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M150 220v-20a40 40 0 0 1 80 0v20\" fill=\"none\" stroke=\"#FF8A3D\" stroke-width=\"6\" stroke-linecap=\"round\"/>\n    \u003crect x=\"105\" y=\"218\" width=\"170\" height=\"113\" rx=\"26\" fill=\"#FF5E8A\" stroke=\"#173B2A\" stroke-width=\"5\"/>\n    \u003cpath d=\"M109 254h162v19H109Z\" fill=\"#FF8A3D\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003crect x=\"153\" y=\"267\" width=\"74\" height=\"48\" rx=\"13\" fill=\"#FFC83D\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003crect x=\"180\" y=\"272\" width=\"20\" height=\"12\" rx=\"4\" fill=\"#FFFFFF\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n  \u003c/g>\n\n  \u003cg class=\"reveal-only\">\n    \u003cpath d=\"M72 42h296a22 22 0 0 1 22 22v70a22 22 0 0 1-22 22H205l-22 23-5-23H72a22 22 0 0 1-22-22V64a22 22 0 0 1 22-22Z\" fill=\"#BDEEB5\" stroke=\"#173B2A\" stroke-width=\"5\" stroke-linejoin=\"round\"/>\n    \u003ctext x=\"220\" y=\"108\" text-anchor=\"middle\" fill=\"#173B2A\" font-size=\"27\" font-weight=\"bold\" font-family=\"Andika, Tajawal, Verdana, sans-serif\">Où est mon sac ?\u003c/text>\n    \u003crect x=\"123\" y=\"181\" width=\"194\" height=\"45\" rx=\"22\" fill=\"#37A047\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003ctext x=\"220\" y=\"212\" text-anchor=\"middle\" fill=\"#FFFFFF\" font-size=\"23\" font-weight=\"bold\" font-family=\"Andika, Tajawal, Verdana, sans-serif\">Interrogative\u003c/text>\n  \u003c/g>\n\u003c/svg>"},{"type":"qcm","text":"Quelle phrase exprime une grande joie ?","options":["Nour a gagné.","Nour a gagné ?","Youpi, Nour a gagné !"],"correct":2,"say":"Regarde les mots et le signe à la fin de chaque phrase.","explain":"Une phrase exclamative peut exprimer une grande joie. Elle se termine par un point d’exclamation.","svg":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 440 380\" aria-hidden=\"true\">\n  \u003crect width=\"440\" height=\"380\" fill=\"#DDF3FF\"/>\n\n  \u003cpath d=\"M30 25 Q30 15 40 15 H187 Q197 15 197 25 V83 Q197 93 187 93 H110 L91 109 L94 93 H40 Q30 93 30 83 Z\" fill=\"#FFFFFF\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n  \u003cpath d=\"M243 25 Q243 15 253 15 H400 Q410 15 410 25 V83 Q410 93 400 93 H346 L354 109 L327 93 H253 Q243 93 243 83 Z\" fill=\"#FFFFFF\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n\n  \u003cpath d=\"M174 265 L162 313 H191 L205 275 Z\" fill=\"#2A6FDB\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n  \u003cpath d=\"M235 275 L249 313 H278 L266 265 Z\" fill=\"#2A6FDB\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n  \u003cellipse cx=\"174\" cy=\"316\" rx=\"22\" ry=\"9\" fill=\"#FF8A3D\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003cellipse cx=\"266\" cy=\"316\" rx=\"22\" ry=\"9\" fill=\"#FF8A3D\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n\n  \u003cpath d=\"M171 213 Q139 215 128 243\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"17\" stroke-linecap=\"round\"/>\n  \u003cpath d=\"M269 213 Q301 215 312 243\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"17\" stroke-linecap=\"round\"/>\n  \u003ccircle cx=\"126\" cy=\"247\" r=\"11\" fill=\"#A8663E\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003ccircle cx=\"314\" cy=\"247\" r=\"11\" fill=\"#A8663E\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n\n  \u003cpath d=\"M181 203 Q220 189 259 203 L275 288 H165 Z\" fill=\"#FF5E8A\" stroke=\"#173B2A\" stroke-width=\"5\" stroke-linejoin=\"round\"/>\n  \u003cpath d=\"M202 205 L220 224 L238 205\" fill=\"none\" stroke=\"#FFFFFF\" stroke-width=\"5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n\n  \u003ccircle cx=\"220\" cy=\"153\" r=\"57\" fill=\"#173B2A\"/>\n  \u003ccircle cx=\"220\" cy=\"158\" r=\"46\" fill=\"#A8663E\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003cpath d=\"M173 144 Q179 94 221 99 Q260 100 268 143 Q248 135 239 115 Q217 139 173 144 Z\" fill=\"#173B2A\"/>\n  \u003ccircle cx=\"205\" cy=\"158\" r=\"3.5\" fill=\"#173B2A\"/>\n  \u003ccircle cx=\"236\" cy=\"158\" r=\"3.5\" fill=\"#173B2A\"/>\n  \u003cpath d=\"M208 177 Q220 189 233 177\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linecap=\"round\"/>\n  \u003ccircle cx=\"187\" cy=\"171\" r=\"6\" fill=\"#FF8A3D\" opacity=\".55\"/>\n  \u003ccircle cx=\"252\" cy=\"171\" r=\"6\" fill=\"#FF8A3D\" opacity=\".55\"/>\n\n  \u003cpath d=\"M27 307 Q27 295 39 295 H401 Q413 295 413 307 V352 Q413 364 401 364 H39 Q27 364 27 352 Z\" fill=\"#FFFFFF\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n\n  \u003cg class=\"reveal-only\" display=\"none\">\n    \u003cg class=\"pulse\">\n      \u003ccircle cx=\"63\" cy=\"150\" r=\"6\" fill=\"#FFC83D\"/>\n      \u003ccircle cx=\"373\" cy=\"151\" r=\"6\" fill=\"#FF5E8A\"/>\n      \u003ccircle cx=\"103\" cy=\"212\" r=\"5\" fill=\"#7B61FF\"/>\n      \u003ccircle cx=\"343\" cy=\"211\" r=\"5\" fill=\"#12A89C\"/>\n      \u003cpath d=\"M92 132 L103 139 L96 150 Z\" fill=\"#FF8A3D\"/>\n      \u003cpath d=\"M343 127 L353 139 L339 142 Z\" fill=\"#3BA7F0\"/>\n      \u003cpath d=\"M72 255 L84 258 L76 269 Z\" fill=\"#37A047\"/>\n      \u003cpath d=\"M366 255 L377 263 L363 268 Z\" fill=\"#FFC83D\"/>\n    \u003c/g>\n    \u003ctext x=\"220\" y=\"339\" text-anchor=\"middle\" font-family=\"Andika, Tajawal, Verdana, sans-serif\" font-size=\"22\" font-weight=\"bold\" fill=\"#173B2A\">Youpi, Nour a gagné !\u003c/text>\n  \u003c/g>\n\u003c/svg>"},{"type":"vf","text":"La phrase « Amine joue au ballon. » pose une question.","answer":false,"say":"Zitouna t’encourage : que nous apprend cette phrase ?","explain":"Cette phrase donne une information : elle est déclarative.","svg":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 440 380\" aria-hidden=\"true\">\n  \u003crect width=\"440\" height=\"380\" fill=\"#EAF8FF\"/>\n  \u003cpath d=\"M0 245 Q220 220 440 245 V380 H0Z\" fill=\"#FBE4B9\"/>\n  \u003cpath d=\"M0 286 Q220 270 440 286\" fill=\"none\" stroke=\"#D9B985\" stroke-width=\"4\" stroke-linecap=\"round\"/>\n  \u003cpath d=\"M40 245 V153 H400 V245\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linecap=\"round\"/>\n  \u003cpath d=\"M40 188 H400 M110 153 V245 M180 153 V235 M260 153 V235 M330 153 V245\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"3\" opacity=\".35\"/>\n  \u003ccircle cx=\"365\" cy=\"61\" r=\"27\" fill=\"#FFC83D\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003cg class=\"sway\">\n    \u003cpath d=\"M160 190 Q143 214 132 246\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"16\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M204 190 Q214 219 235 238\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"16\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M128 250 Q143 256 157 248 M230 242 Q244 252 258 247\" fill=\"none\" stroke=\"#2A6FDB\" stroke-width=\"13\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M155 112 Q182 101 208 117 L217 193 Q184 207 149 189Z\" fill=\"#FF8A3D\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M154 136 Q131 156 116 184 M207 137 Q227 160 250 170\" fill=\"none\" stroke=\"#F6BE93\" stroke-width=\"17\" stroke-linecap=\"round\"/>\n    \u003ccircle cx=\"114\" cy=\"187\" r=\"10\" fill=\"#F6BE93\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n    \u003ccircle cx=\"253\" cy=\"171\" r=\"10\" fill=\"#F6BE93\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n    \u003ccircle cx=\"181\" cy=\"76\" r=\"39\" fill=\"#F6BE93\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003cpath d=\"M144 69 Q143 28 180 32 Q217 31 220 69 Q201 58 193 47 Q175 66 144 69Z\" fill=\"#173B2A\"/>\n    \u003ccircle cx=\"168\" cy=\"79\" r=\"3\" fill=\"#173B2A\"/>\n    \u003ccircle cx=\"195\" cy=\"79\" r=\"3\" fill=\"#173B2A\"/>\n    \u003cpath d=\"M174 93 Q182 100 190 93\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"3\" stroke-linecap=\"round\"/>\n  \u003c/g>\n  \u003cpath d=\"M289 271 Q311 265 332 271\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"3\" stroke-linecap=\"round\" opacity=\".5\"/>\n  \u003cg class=\"bounce\">\n    \u003ccircle cx=\"289\" cy=\"242\" r=\"31\" fill=\"#FFC83D\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003cpath d=\"M261 229 Q289 238 315 227 M274 215 Q280 241 269 264 M301 215 Q297 243 307 262\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"3\" stroke-linecap=\"round\"/>\n  \u003c/g>\n  \u003cpath d=\"M339 256 Q349 252 357 256 M350 267 Q358 265 364 268\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"3\" stroke-linecap=\"round\"/>\n  \u003cg class=\"reveal-only\">\n    \u003ccircle cx=\"365\" cy=\"105\" r=\"42\" fill=\"#37A047\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003ccircle cx=\"365\" cy=\"105\" r=\"9\" fill=\"#FFFFFF\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n    \u003crect x=\"301\" y=\"151\" width=\"128\" height=\"49\" rx=\"23\" fill=\"#FFFFFF\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003ctext x=\"365\" y=\"184\" text-anchor=\"middle\" font-family=\"Andika, Tajawal, Verdana, sans-serif\" font-size=\"27\" font-weight=\"bold\" fill=\"#173B2A\">Faux\u003c/text>\n  \u003c/g>\n\u003c/svg>"},{"type":"id","text":"Quel est le type de la phrase « Quel joli dessin ! » ?","answer":"exclamative","say":"Zitouna t’encourage : observe le signe final.","explain":"Une phrase exclamative se termine par un point d’exclamation.","svg":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 440 380\" aria-hidden=\"true\">\n  \u003crect width=\"440\" height=\"380\" fill=\"#FFF9E9\"/>\n  \u003cpath d=\"M0 316H440\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003ccircle cx=\"44\" cy=\"58\" r=\"13\" fill=\"#FFC83D\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n  \u003ccircle cx=\"396\" cy=\"286\" r=\"10\" fill=\"#FF5E8A\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n\n  \u003cpath d=\"M90 29H350Q370 29 370 49V83Q370 103 350 103H265L239 122L244 103H90Q70 103 70 83V49Q70 29 90 29Z\" fill=\"#FFFFFF\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003ccircle cx=\"190\" cy=\"67\" r=\"5\" fill=\"#7B61FF\"/>\n  \u003ccircle cx=\"220\" cy=\"67\" r=\"5\" fill=\"#FF8A3D\"/>\n  \u003ccircle cx=\"250\" cy=\"67\" r=\"5\" fill=\"#3BA7F0\"/>\n\n  \u003cpath d=\"M220 123V145\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linecap=\"round\"/>\n  \u003ccircle cx=\"220\" cy=\"123\" r=\"5\" fill=\"#FFC83D\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n\n  \u003cg class=\"sway\">\n    \u003crect x=\"102\" y=\"142\" width=\"236\" height=\"178\" rx=\"13\" fill=\"#FF8A3D\" stroke=\"#173B2A\" stroke-width=\"5\"/>\n    \u003crect x=\"116\" y=\"155\" width=\"208\" height=\"152\" rx=\"5\" fill=\"#B9ECFF\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003ccircle cx=\"274\" cy=\"190\" r=\"24\" fill=\"#FFC83D\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003cpath d=\"M252 180L245 174M295 181L302 175M274 157V148\" stroke=\"#173B2A\" stroke-width=\"3\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M119 273L170 222L204 256L242 211L322 281V305H119Z\" fill=\"#37A047\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M119 290Q171 263 220 291T323 288V306H119Z\" fill=\"#12A89C\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n    \u003cpath d=\"M152 185L158 197L171 199L161 208L163 221L152 215L141 221L143 208L133 199L146 197Z\" fill=\"#FF5E8A\" stroke=\"#173B2A\" stroke-width=\"3\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M190 180Q203 164 216 181Q203 196 190 180Z\" fill=\"#7B61FF\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n  \u003c/g>\n\n  \u003cpath d=\"M76 156Q67 173 76 190M364 156Q373 173 364 190\" fill=\"none\" stroke=\"#2A6FDB\" stroke-width=\"4\" stroke-linecap=\"round\"/>\n\n  \u003cg class=\"reveal-only\">\n    \u003cpath d=\"M90 29H350Q370 29 370 49V83Q370 103 350 103H265L239 122L244 103H90Q70 103 70 83V49Q70 29 90 29Z\" fill=\"#37A047\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003ctext x=\"220\" y=\"75\" text-anchor=\"middle\" fill=\"#FFFFFF\" font-family=\"Andika, Tajawal, Verdana, sans-serif\" font-size=\"26\" font-weight=\"bold\">Quel joli dessin !\u003c/text>\n  \u003c/g>\n\u003c/svg>"},{"type":"qcm","text":"Quelle phrase donne une information ?","options":["Où est Nour ?","Quel beau jardin !","Nour est au jardin."],"correct":2,"say":"Zitouna t’encourage : cherche la phrase qui raconte un fait.","explain":"Une phrase déclarative donne une information.","svg":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 440 380\" aria-hidden=\"true\">\n  \u003crect width=\"440\" height=\"380\" fill=\"#EAF9FF\"/>\n  \u003ccircle cx=\"382\" cy=\"62\" r=\"32\" fill=\"#FFC83D\"/>\n  \u003cpath d=\"M0 282 Q110 246 220 282 T440 278 V380 H0Z\" fill=\"#8BD66B\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003cpath d=\"M0 330 Q125 305 220 335 T440 325 V380 H0Z\" fill=\"#37A047\"/>\n\n  \u003cg transform=\"translate(73 260)\">\n    \u003cg class=\"sway\">\n      \u003cpath d=\"M0 65 Q10 35 0 0\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"5\" stroke-linecap=\"round\"/>\n      \u003cellipse cx=\"-13\" cy=\"36\" rx=\"15\" ry=\"7\" transform=\"rotate(25 -13 36)\" fill=\"#37A047\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n      \u003ccircle cx=\"0\" cy=\"-17\" r=\"12\" fill=\"#FF5E8A\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n      \u003ccircle cx=\"-16\" cy=\"-3\" r=\"12\" fill=\"#FF5E8A\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n      \u003ccircle cx=\"16\" cy=\"-3\" r=\"12\" fill=\"#FF5E8A\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n      \u003ccircle cx=\"0\" cy=\"6\" r=\"12\" fill=\"#FF5E8A\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n      \u003ccircle cx=\"0\" cy=\"-5\" r=\"10\" fill=\"#FFC83D\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n    \u003c/g>\n  \u003c/g>\n\n  \u003cg transform=\"translate(365 267)\">\n    \u003cg class=\"sway\">\n      \u003cpath d=\"M0 62 Q-8 32 0 0\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"5\" stroke-linecap=\"round\"/>\n      \u003cellipse cx=\"14\" cy=\"37\" rx=\"15\" ry=\"7\" transform=\"rotate(-25 14 37)\" fill=\"#37A047\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n      \u003ccircle cx=\"0\" cy=\"-17\" r=\"12\" fill=\"#7B61FF\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n      \u003ccircle cx=\"-16\" cy=\"-3\" r=\"12\" fill=\"#7B61FF\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n      \u003ccircle cx=\"16\" cy=\"-3\" r=\"12\" fill=\"#7B61FF\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n      \u003ccircle cx=\"0\" cy=\"6\" r=\"12\" fill=\"#7B61FF\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n      \u003ccircle cx=\"0\" cy=\"-5\" r=\"10\" fill=\"#FFC83D\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n    \u003c/g>\n  \u003c/g>\n\n  \u003cpath d=\"M191 292 L187 343 Q202 351 212 343 L220 299Z\" fill=\"#2A6FDB\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n  \u003cpath d=\"M220 299 L228 343 Q243 351 254 342 L250 289Z\" fill=\"#2A6FDB\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n  \u003cellipse cx=\"197\" cy=\"346\" rx=\"21\" ry=\"9\" fill=\"#FF8A3D\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003cellipse cx=\"245\" cy=\"346\" rx=\"21\" ry=\"9\" fill=\"#FF8A3D\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003cpath d=\"M191 224 Q220 210 249 224 L262 301 Q220 320 179 301Z\" fill=\"#FF8A3D\" stroke=\"#173B2A\" stroke-width=\"5\" stroke-linejoin=\"round\"/>\n  \u003cpath d=\"M188 231 Q170 249 158 274\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"18\" stroke-linecap=\"round\"/>\n  \u003cpath d=\"M252 231 Q273 249 282 273\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"18\" stroke-linecap=\"round\"/>\n  \u003ccircle cx=\"157\" cy=\"278\" r=\"11\" fill=\"#C87850\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003ccircle cx=\"283\" cy=\"278\" r=\"11\" fill=\"#C87850\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n  \u003cpath d=\"M168 151 Q165 88 220 82 Q277 89 272 152 L270 200 Q252 224 220 225 Q185 222 170 200Z\" fill=\"#173B2A\"/>\n  \u003ccircle cx=\"220\" cy=\"158\" r=\"53\" fill=\"#C87850\" stroke=\"#173B2A\" stroke-width=\"5\"/>\n  \u003cpath d=\"M168 145 Q181 104 218 105 Q249 103 270 143 Q252 139 239 119 Q215 147 168 145Z\" fill=\"#173B2A\"/>\n  \u003ccircle cx=\"200\" cy=\"164\" r=\"4\" fill=\"#173B2A\"/>\n  \u003ccircle cx=\"240\" cy=\"164\" r=\"4\" fill=\"#173B2A\"/>\n  \u003cpath d=\"M209 183 Q220 193 231 183\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linecap=\"round\"/>\n  \u003ccircle cx=\"184\" cy=\"180\" r=\"7\" fill=\"#FF8A3D\" opacity=\".7\"/>\n  \u003ccircle cx=\"256\" cy=\"180\" r=\"7\" fill=\"#FF8A3D\" opacity=\".7\"/>\n\n  \u003cg class=\"reveal-only\">\n    \u003cpath d=\"M291 45 Q291 25 312 25 H386 Q406 25 406 45 V91 Q406 111 386 111 H342 L321 128 L324 111 H312 Q291 111 291 91Z\" fill=\"#37A047\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n    \u003ctext x=\"349\" y=\"82\" text-anchor=\"middle\" font-family=\"Andika, Tajawal, Verdana, sans-serif\" font-size=\"48\" font-weight=\"bold\" fill=\"#FFFFFF\">.\u003c/text>\n  \u003c/g>\n\u003c/svg>"},{"type":"vf","text":"La phrase « Où va Yassine ? » se termine par un point d’interrogation.","answer":true,"say":"Zitouna t’encourage : regarde la fin de la phrase.","explain":"Une question se termine par un point d’interrogation.","svg":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 440 380\" aria-hidden=\"true\">\n  \u003crect width=\"440\" height=\"380\" fill=\"#FFF9EB\"/>\n  \u003cellipse cx=\"220\" cy=\"344\" rx=\"180\" ry=\"17\" fill=\"#DDF3E5\"/>\n\n  \u003cg stroke=\"#173B2A\" stroke-width=\"4\" stroke-linejoin=\"round\">\n    \u003crect x=\"277\" y=\"135\" width=\"112\" height=\"193\" rx=\"12\" fill=\"#7B61FF\"/>\n    \u003cpath d=\"M288 144 L371 158 L353 327 L288 327 Z\" fill=\"#FF8A3D\"/>\n    \u003ccircle cx=\"345\" cy=\"242\" r=\"6\" fill=\"#FFC83D\"/>\n  \u003c/g>\n\n  \u003cg class=\"sway\">\n    \u003cpath d=\"M176 221 L159 272 L186 278 L203 235 Z\" fill=\"#2A6FDB\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M196 225 L213 270 L239 262 L221 217 Z\" fill=\"#2A6FDB\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M157 274 L185 277 L187 288 Q174 296 151 287 Z\" fill=\"#173B2A\"/>\n    \u003cpath d=\"M212 271 L239 262 L246 273 Q238 286 216 283 Z\" fill=\"#173B2A\"/>\n    \u003cpath d=\"M164 158 Q189 146 218 160 L229 229 Q195 246 161 227 Z\" fill=\"#12A89C\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003cpath d=\"M166 171 Q145 188 142 218\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"18\" stroke-linecap=\"round\"/>\n    \u003ccircle cx=\"142\" cy=\"219\" r=\"10\" fill=\"#C98053\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003cpath d=\"M219 174 Q242 187 259 174\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"17\" stroke-linecap=\"round\"/>\n    \u003ccircle cx=\"260\" cy=\"173\" r=\"10\" fill=\"#C98053\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003crect x=\"182\" y=\"139\" width=\"17\" height=\"22\" rx=\"7\" fill=\"#C98053\"/>\n    \u003ccircle cx=\"190\" cy=\"111\" r=\"43\" fill=\"#C98053\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003cpath d=\"M149 105 Q145 65 182 66 Q218 59 232 98 Q214 93 205 82 Q190 104 149 105 Z\" fill=\"#173B2A\"/>\n    \u003ccircle cx=\"177\" cy=\"116\" r=\"3\" fill=\"#173B2A\"/>\n    \u003ccircle cx=\"204\" cy=\"116\" r=\"3\" fill=\"#173B2A\"/>\n    \u003cpath d=\"M181 132 Q191 140 201 131\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"3\" stroke-linecap=\"round\"/>\n  \u003c/g>\n\n  \u003cpath d=\"M32 26 Q25 26 25 38 L25 88 Q25 101 38 101 L57 101 L72 117 L74 101 L361 101 Q375 101 375 87 L375 38 Q375 26 362 26 Z\" fill=\"#FFFFFF\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n\n  \u003cg class=\"reveal-only\">\n    \u003ctext x=\"47\" y=\"75\" fill=\"#173B2A\" font-family=\"Andika, Tajawal, Verdana, sans-serif\" font-size=\"27\" font-weight=\"bold\">Où va Yassine\u003c/text>\n    \u003ctext x=\"292\" y=\"75\" fill=\"#173B2A\" font-family=\"Andika, Tajawal, Verdana, sans-serif\" font-size=\"27\" font-weight=\"bold\">?\u003c/text>\n    \u003ccircle cx=\"300\" cy=\"65\" r=\"20\" fill=\"none\" stroke=\"#37A047\" stroke-width=\"5\"/>\n  \u003c/g>\n\u003c/svg>"},{"type":"id","text":"Quel type de phrase vois-tu dans la bulle ?","answer":"phrase exclamative","say":"Regarde le signe à la fin de la phrase, tu peux trouver !","explain":"Une phrase exclamative exprime une émotion et se termine par un point d’exclamation.","svg":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 440 380\" aria-hidden=\"true\">\n  \u003crect width=\"440\" height=\"380\" fill=\"#EAF8FF\"/>\n  \u003ccircle cx=\"391\" cy=\"53\" r=\"28\" fill=\"#FFC83D\"/>\n  \u003cpath d=\"M0 343 Q110 326 220 344 T440 339 V380 H0Z\" fill=\"#8BD879\"/>\n\n  \u003cpath d=\"M40 37 Q27 37 27 51 V137 Q27 151 42 151 H96 L113 170 L117 151 H397 Q412 151 412 136 V51 Q412 37 397 37Z\" fill=\"#FFFFFF\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n\n  \u003cg fill=\"none\" stroke=\"#173B2A\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\">\n    \u003cpath d=\"M72 69 Q62 59 54 69 Q48 80 56 89 Q64 97 73 87              M79 76 Q71 76 71 84 Q71 92 79 92 Q87 92 87 84 Q87 76 79 76Z              M93 91 V77 L100 84 L107 77 V91              M113 91 V77 L120 84 L127 77 V91              M143 79 Q132 73 132 84 Q132 94 143 90 M133 84 H144              M164 77 V91 M164 70 V71              M173 69 V88 Q173 92 178 91\"/>\n    \u003cpath d=\"M111 108 L119 127 L127 108              M143 112 Q135 112 135 119 Q135 127 143 127 Q151 127 151 119 Q151 112 143 112Z              M158 105 V124 Q158 128 163 127              M180 115 Q169 110 169 120 Q169 129 180 125 M170 120 H181              M204 108 V127 M204 117 H220 M220 108 V127              M227 127 L236 108 L245 127 M230 121 H242              M252 108 V121 Q252 128 260 128 Q268 128 268 121 V108              M275 108 H293 M284 108 V127              M309 108 V120 M309 126 V127\"/>\n  \u003c/g>\n\n  \u003cg class=\"reveal-only\">\n    \u003crect x=\"105\" y=\"169\" width=\"235\" height=\"40\" rx=\"20\" fill=\"#37A047\" stroke=\"#173B2A\" stroke-width=\"4\"/>\n    \u003ctext x=\"222\" y=\"197\" text-anchor=\"middle\" fill=\"#FFFFFF\" font-family=\"Andika, Tajawal, Verdana, sans-serif\" font-size=\"23\" font-weight=\"bold\">phrase exclamative\u003c/text>\n  \u003c/g>\n\n  \u003cg class=\"float\">\n    \u003cpath d=\"M292 219 L326 254 L292 287 L258 254Z\" fill=\"#FF5E8A\" stroke=\"#173B2A\" stroke-width=\"5\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M292 219 L292 287 M258 254 H326\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n    \u003cpath d=\"M292 287 Q310 303 294 315 Q278 326 293 339\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"3\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M295 305 L280 299 M295 305 L310 299 M291 329 L277 323 M291 329 L306 322\" fill=\"none\" stroke=\"#FF8A3D\" stroke-width=\"5\" stroke-linecap=\"round\"/>\n  \u003c/g>\n\n  \u003cpath d=\"M258 254 Q215 268 174 291\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"2\" stroke-linecap=\"round\"/>\n\n  \u003cg class=\"sway\">\n    \u003cpath d=\"M91 369 L98 326 H163 L171 369Z\" fill=\"#7B61FF\" stroke=\"#173B2A\" stroke-width=\"5\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M99 337 L78 354 M158 335 L175 293\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"10\" stroke-linecap=\"round\"/>\n    \u003ccircle cx=\"76\" cy=\"356\" r=\"7\" fill=\"#FFB27D\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n    \u003ccircle cx=\"174\" cy=\"291\" r=\"7\" fill=\"#FFB27D\" stroke=\"#173B2A\" stroke-width=\"3\"/>\n    \u003ccircle cx=\"130\" cy=\"288\" r=\"39\" fill=\"#FFB27D\" stroke=\"#173B2A\" stroke-width=\"5\"/>\n    \u003cpath d=\"M92 283 Q91 241 127 244 Q163 242 169 282 Q154 273 149 258 Q132 276 92 283Z\" fill=\"#173B2A\"/>\n    \u003ccircle cx=\"116\" cy=\"292\" r=\"3\" fill=\"#173B2A\"/>\n    \u003ccircle cx=\"142\" cy=\"292\" r=\"3\" fill=\"#173B2A\"/>\n    \u003cpath d=\"M119 306 Q130 316 141 306\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"3\" stroke-linecap=\"round\"/>\n  \u003c/g>\n\u003c/svg>"},{"type":"vf","text":"La phrase « Quelle belle fleur ! » est interrogative.","answer":false,"say":"Zitouna t’encourage : cette phrase pose-t-elle une question ?","explain":"Cette phrase est exclamative : elle se termine par !","svg":"\u003csvg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 440 380\" aria-hidden=\"true\">\n  \u003crect width=\"440\" height=\"380\" fill=\"#FFF8E8\"/>\n  \u003cellipse cx=\"220\" cy=\"343\" rx=\"105\" ry=\"13\" fill=\"#DDEEDB\"/>\n\n  \u003cpath d=\"M220 254 Q213 205 220 151\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"6\" stroke-linecap=\"round\"/>\n  \u003cpath d=\"M220 254 Q213 205 220 151\" fill=\"none\" stroke=\"#37A047\" stroke-width=\"4\" stroke-linecap=\"round\"/>\n\n  \u003cg class=\"sway\">\n    \u003cpath d=\"M218 226 Q174 174 138 203 Q151 239 218 226Z\" fill=\"#37A047\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M218 226 Q180 210 154 208\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"3\" stroke-linecap=\"round\"/>\n    \u003cpath d=\"M221 207 Q263 164 298 190 Q283 226 221 207Z\" fill=\"#37A047\" stroke=\"#173B2A\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n    \u003cpath d=\"M221 207 Q258 195 283 194\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"3\" stroke-linecap=\"round\"/>\n  \u003c/g>\n\n  \u003cg stroke=\"#173B2A\" stroke-width=\"4\" stroke-linejoin=\"round\">\n    \u003cellipse cx=\"220\" cy=\"120\" rx=\"27\" ry=\"51\" fill=\"#FF5E8A\"/>\n    \u003cellipse cx=\"220\" cy=\"120\" rx=\"27\" ry=\"51\" fill=\"#FF5E8A\" transform=\"rotate(72 220 120)\"/>\n    \u003cellipse cx=\"220\" cy=\"120\" rx=\"27\" ry=\"51\" fill=\"#FF5E8A\" transform=\"rotate(144 220 120)\"/>\n    \u003cellipse cx=\"220\" cy=\"120\" rx=\"27\" ry=\"51\" fill=\"#FF5E8A\" transform=\"rotate(216 220 120)\"/>\n    \u003cellipse cx=\"220\" cy=\"120\" rx=\"27\" ry=\"51\" fill=\"#FF5E8A\" transform=\"rotate(288 220 120)\"/>\n    \u003ccircle cx=\"220\" cy=\"120\" r=\"27\" fill=\"#FFC83D\"/>\n  \u003c/g>\n  \u003ccircle cx=\"211\" cy=\"113\" r=\"4\" fill=\"#FFF8E8\"/>\n  \u003ccircle cx=\"229\" cy=\"113\" r=\"4\" fill=\"#FFF8E8\"/>\n  \u003cpath d=\"M211 127 Q220 135 229 127\" fill=\"none\" stroke=\"#173B2A\" stroke-width=\"3\" stroke-linecap=\"round\"/>\n\n  \u003cpath d=\"M151 260 H289 L275 329 Q274 338 264 338 H176 Q166 338 165 329Z\" fill=\"#3BA7F0\" stroke=\"#173B2A\" stroke-width=\"5\" stroke-linejoin=\"round\"/>\n  \u003crect x=\"145\" y=\"246\" width=\"150\" height=\"24\" rx=\"11\" fill=\"#2A6FDB\" stroke=\"#173B2A\" stroke-width=\"5\"/>\n  \u003cpath d=\"M182 291 Q220 309 258 291\" fill=\"none\" stroke=\"#B9E9FF\" stroke-width=\"5\" stroke-linecap=\"round\"/>\n\n  \u003cg class=\"reveal-only\">\n    \u003ccircle cx=\"349\" cy=\"78\" r=\"42\" fill=\"#37A047\" stroke=\"#173B2A\" stroke-width=\"5\"/>\n    \u003cpath d=\"M349 54 V82\" fill=\"none\" stroke=\"#FFFFFF\" stroke-width=\"9\" stroke-linecap=\"round\"/>\n    \u003ccircle cx=\"349\" cy=\"99\" r=\"5\" fill=\"#FFFFFF\"/>\n  \u003c/g>\n\u003c/svg>"}],"recap":["Déclarative : elle informe.","Interrogative : elle questionne.","Exclamative : elle exprime une émotion.","Observe le signe à la fin."],"recapSay":"Bravo ! Zitouna est fière de vous : relisez chaque phrase et regardez comment elle se termine."};
+
+const I18N = {
+  fr:{ qnum:(n,t)=>`Question ${n} sur ${t}`, types:{qcm:"Question à choix",vf:"Vrai ou faux",id:"Devine !"},
+    tf:["Vrai","Faux"], letters:["A","B","C"], reveal:"Révéler la réponse", revealed:"Réponse révélée",
+    prev:"Question précédente", next:"Question suivante", finish:"Terminer", pause:"Pause", resume:"Reprendre", restart:"Relancer",
+    sound:on=>"Son : "+(on?"oui":"non"), fs:"Plein écran", fsExit:"Quitter le plein écran", retain:"Je retiens :", timeup:"Temps écoulé ! Qui veut aider son camarade ?",
+    sec:"s", start:"Commencer le quiz", timePer:"Temps par question :", sub:(s,l)=>`Quiz de révision : ${s}, ${l}.`,
+    howto:["Projetez la question et laissez la classe observer l'image.","Désignez un élève pour répondre.","Révélez la réponse, faites répéter la phrase de Zitouna, puis passez à la suivante."],
+    keys:"Clavier ou télécommande : flèche droite pour révéler puis avancer, flèche gauche pour revenir. P : pause, R : relancer, F : plein écran.",
+    endTitle:"Bravo la classe ! Ce qu'on retient :", again:"Recommencer le quiz", back:"Revoir la dernière question",
+    print:"Imprimer", pmTitle:"Que voulez-vous imprimer ?", cancel:"Annuler",
+    modes:{student:["Fiche élève","Les questions et les images, sans les réponses."], key:["Corrigé pour l'enseignant","Les bonnes réponses et les phrases à retenir."], both:["Les deux","La fiche élève, puis le corrigé sur une nouvelle page."]},
+    fields:["Nom et prénom :","Classe :","Date :"], answerLine:"Ma réponse :", keyTitle:"Corrigé", colQ:"Question", colA:"Bonne réponse", colR:"À retenir", recapTitle:"Ce qu'on retient" },
+  ar:{ qnum:(n,t)=>`السؤال ${n} من ${t}`, types:{qcm:"اختيار من متعدد",vf:"صحيح أم خطأ",id:"خمّن !"},
+    tf:["صحيح","خطأ"], letters:["أ","ب","ج"], reveal:"أظهر الجواب", revealed:"تم إظهار الجواب",
+    prev:"السؤال السابق", next:"السؤال التالي", finish:"إنهاء", pause:"توقف", resume:"استئناف", restart:"إعادة",
+    sound:on=>"الصوت : "+(on?"نعم":"لا"), fs:"ملء الشاشة", fsExit:"الخروج من ملء الشاشة", retain:"أتذكّر :", timeup:"انتهى الوقت! من يريد مساعدة زميله؟",
+    sec:"ث", start:"ابدأ المسابقة", timePer:"الوقت لكل سؤال :", sub:(s,l)=>`مسابقة للمراجعة : ${s}، ${l}.`,
+    howto:["اعرض السؤال واترك التلاميذ يلاحظون الصورة.","اختر تلميذا للإجابة.","أظهر الجواب، واطلب من القسم ترديد جملة زيتونة، ثم انتقل إلى السؤال التالي."],
+    keys:"لوحة المفاتيح أو جهاز التحكم : السهم الأيمن لإظهار الجواب ثم التقدم، والسهم الأيسر للرجوع. P : توقف، R : إعادة، F : ملء الشاشة.",
+    endTitle:"أحسنتم! ما نتذكّره :", again:"إعادة المسابقة", back:"مراجعة السؤال الأخير",
+    print:"طباعة", pmTitle:"ماذا تريد أن تطبع؟", cancel:"إلغاء",
+    modes:{student:["ورقة التلميذ","الأسئلة والصور بدون الأجوبة."], key:["التصحيح للأستاذ","الأجوبة الصحيحة والجمل التي يجب تذكّرها."], both:["الاثنان","ورقة التلميذ، ثم التصحيح في صفحة جديدة."]},
+    fields:["الاسم الكامل :","القسم :","التاريخ :"], answerLine:"جوابي :", keyTitle:"التصحيح", colQ:"السؤال", colA:"الجواب الصحيح", colR:"أتذكّر", recapTitle:"ما نتذكّره" },
+  en:{ qnum:(n,t)=>`Question ${n} of ${t}`, types:{qcm:"Multiple choice",vf:"True or false",id:"Guess!"},
+    tf:["True","False"], letters:["A","B","C"], reveal:"Show the answer", revealed:"Answer shown",
+    prev:"Previous question", next:"Next question", finish:"Finish", pause:"Pause", resume:"Resume", restart:"Restart",
+    sound:on=>"Sound: "+(on?"on":"off"), fs:"Full screen", fsExit:"Exit full screen", retain:"Remember:", timeup:"Time's up! Who can help?",
+    sec:"s", start:"Start the quiz", timePer:"Time per question:", sub:(s,l)=>`Review quiz: ${s}, ${l}.`,
+    howto:["Project the question and let the class look at the picture.","Choose a pupil to answer.","Show the answer, have the class repeat Zitouna's sentence, then move on."],
+    keys:"Keyboard or clicker: right arrow shows the answer then moves on, left arrow goes back. P: pause, R: restart, F: full screen.",
+    endTitle:"Well done, class! What we remember:", again:"Play again", back:"Back to the last question",
+    print:"Print", pmTitle:"What do you want to print?", cancel:"Cancel",
+    modes:{student:["Pupil worksheet","Questions and pictures, without the answers."], key:["Teacher's answer key","Correct answers and sentences to remember."], both:["Both","The worksheet, then the answer key on a new page."]},
+    fields:["Name:","Class:","Date:"], answerLine:"My answer:", keyTitle:"Answer key", colQ:"Question", colA:"Correct answer", colR:"Remember", recapTitle:"What we remember" }
+};
+const T = I18N[DATA.lang] || I18N.fr;
+document.documentElement.lang = DATA.lang || "fr";
+if (DATA.lang === "ar") document.documentElement.dir = "rtl";
+document.title = DATA.title;
+const Q = DATA.questions;
+const COLORS = ["var(--a)","var(--b)","var(--c)"];
+
+function mascotSVG(){
+  return `<svg class="zit" viewBox="0 0 140 172" aria-hidden="true">
+  <path d="M70 92 V114" stroke="#3E9B3A" stroke-width="9" stroke-linecap="round"/>
+  <path d="M70 106 C58 97 45 99 38 108 C49 116 62 114 70 106Z" fill="#37A047"/>
+  <path d="M70 102 C82 93 95 95 102 104 C91 112 78 110 70 102Z" fill="#37A047"/>
+  <path d="M68 27 C60 8 43 3 32 10 C39 25 54 31 68 27Z" fill="#2E8B3E"/>
+  <path d="M72 27 C80 8 97 3 108 10 C101 25 86 31 72 27Z" fill="#37A047"/>
+  <ellipse cx="70" cy="60" rx="44" ry="37" fill="#8BCB4A"/>
+  <ellipse cx="54" cy="42" rx="13" ry="7" fill="#fff" opacity=".35"/>
+  <g class="normal-only"><circle cx="54" cy="60" r="9" fill="#fff"/><circle cx="86" cy="60" r="9" fill="#fff"/>
+    <circle cx="56" cy="62" r="5" fill="#173B2A"/><circle cx="88" cy="62" r="5" fill="#173B2A"/>
+    <path d="M58 78 Q70 88 82 78" stroke="#173B2A" stroke-width="4" fill="none" stroke-linecap="round"/></g>
+  <g class="happy-only"><path d="M46 63 Q54 52 62 63" stroke="#173B2A" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+    <path d="M78 63 Q86 52 94 63" stroke="#173B2A" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+    <path d="M54 74 Q70 98 86 74Z" fill="#173B2A"/><path d="M61 83 Q70 90 79 83 Q70 86 61 83Z" fill="#FF7A9C"/></g>
+  <ellipse cx="41" cy="73" rx="7" ry="4.5" fill="#FF8FAB" opacity=".85"/><ellipse cx="99" cy="73" rx="7" ry="4.5" fill="#FF8FAB" opacity=".85"/>
+  <rect x="26" y="112" width="88" height="16" rx="7" fill="#1F57B8"/>
+  <path d="M32 128 H108 L99 170 H41Z" fill="#2A6FDB"/>
+  <path d="M70 135 l8 8 -8 8 -8 -8Z M50 141 l5 5 -5 5 -5 -5Z M90 141 l5 5 -5 5 -5 -5Z M70 155 l4 4 -4 4 -4 -4Z" fill="#fff"/></svg>`;
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+const $ = s => document.querySelector(s);
+const base = Math.max(15, DATA.timePerQuestion || 45);
+const state = { i:-1, revealed:false, dur:base, left:base, running:false, sound:true, visited:new Set(), timer:null };
+const CIRC = 2*Math.PI*34;
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const STEP = 74 / Q.length;
+
+function buildStatic(){
+  $("#title").textContent = DATA.title;
+  $("#sub").textContent = T.sub(DATA.subject, DATA.level);
+  $("#howto").innerHTML = T.howto.map(h => `<li>${esc(h)}</li>`).join("");
+  $("#keys").textContent = T.keys;
+  const opts = [...new Set([Math.max(15, base-15), base, base+15])];
+  $("#setting").innerHTML = esc(T.timePer) + " " + opts.map(v => `<button class="seg" data-dur="${v}" aria-pressed="${v===base}">${v} ${T.sec}</button>`).join("");
+  document.querySelectorAll(".seg").forEach(b => b.addEventListener("click", () => {
+    state.dur = +b.dataset.dur;
+    document.querySelectorAll(".seg").forEach(x => x.setAttribute("aria-pressed", x === b));
+  }));
+  $("#startBtn").textContent = T.start;
+  $("#restartBtn").textContent = T.restart;
+  $("#prevBtn").textContent = T.prev;
+  $("#fsBtn").textContent = T.fs;
+  $("#soundBtn").textContent = T.sound(true);
+  $("#endTitle").textContent = T.endTitle;
+  $("#again" + "Btn").textContent = T.again;
+  $("#backBtn").textContent = T.back;
+  $("#introGuide").innerHTML = mascotSVG();
+  $("#zitSlot").innerHTML = mascotSVG();
+  $("#endGuide").innerHTML = mascotSVG();
+  const box = $("#pleaves");
+  Q.forEach((_, k) => {
+    const b = document.createElement("button");
+    b.className = "pleaf " + (k % 2 ? "r" : "l");
+    b.style.bottom = `calc(${13 + k*STEP}% - 1.2vw)`;
+    b.setAttribute("aria-label", T.qnum(k+1, Q.length));
+    b.innerHTML = `<svg viewBox="0 0 60 30"><path d="M0 15 C12 0 40 -2 60 12 C42 30 14 30 0 15Z" fill="#37A047"/></svg>`;
+    b.addEventListener("click", () => { if (state.visited.has(k)) go(k); });
+    box.appendChild(b);
+  });
+}
+function renderProgress(){
+  const n = state.visited.size;
+  $("#pstem").style.height = (n === 0 ? 3 : 4 + n*STEP) + "%";
+  document.querySelectorAll(".pleaf").forEach((b, k) => {
+    b.classList.toggle("grown", state.visited.has(k));
+    b.classList.toggle("current", k === state.i);
+  });
+  $("#pflower").classList.toggle("bloom", state.i >= Q.length);
+}
+function render(){
+  const intro = state.i < 0, end = state.i >= Q.length;
+  $("#view-intro").hidden = !intro; $("#view-quiz").hidden = intro || end; $("#view-end").hidden = !end;
+  renderProgress();
+  if (intro || end){ stopTimer(); if (end) renderEnd(); return; }
+  const q = Q[state.i], r = state.revealed;
+  $("#qnum").textContent = T.qnum(state.i+1, Q.length);
+  const chip = $("#chip"); chip.textContent = T.types[q.type]; chip.className = "chip " + q.type;
+  const art = $("#art");
+  if (art.dataset.q !== String(state.i)){ art.innerHTML = q.svg; art.dataset.q = state.i; }
+  art.classList.toggle("revealed", r);
+  $("#qtext").textContent = q.text;
+  $("#qtext").classList.toggle("long", q.text.length > 70);
+  const ans = $("#answers");
+  if (q.type === "id"){
+    ans.className = "";
+    ans.innerHTML = `<div class="idbox ${r ? "shown" : ""}">${r ? esc(q.answer) : "? ? ?"}</div>`;
+  } else {
+    const opts = q.type === "vf" ? T.tf : q.options;
+    const good = q.type === "vf" ? (q.answer ? 0 : 1) : q.correct;
+    ans.className = "answers " + q.type;
+    ans.innerHTML = opts.map((t, k) => {
+      const cls = r ? (k === good ? "correct" : "dim") : "";
+      const letter = q.type === "qcm" ? `<span class="letter" style="background:${COLORS[k % 3]}">${T.letters[k % 3]}</span>` : "";
+      const style = q.type === "vf" ? `style="color:${k ? "var(--b)" : "var(--a)"}"` : "";
+      return `<div class="opt ${cls}" ${style}>${letter}<span>${esc(t)}</span></div>`;
+    }).join("");
+  }
+  $("#guide").classList.toggle("happy", r);
+  $("#bubble").innerHTML = r ? `<b>${esc(T.retain)}</b>${esc(q.explain)}` : esc(q.say);
+  $("#revealBtn").disabled = r;
+  $("#revealBtn").textContent = r ? T.revealed : T.reveal;
+  $("#prevBtn").disabled = state.i === 0;
+  $("#nextBtn").textContent = state.i === Q.length-1 ? T.finish : T.next;
+}
+function renderEnd(){
+  $("#points").innerHTML = (DATA.recap || []).map((p, k) =>
+    `<div class="point"><i style="background:${COLORS[k % 3]}">${k+1}</i><span>${esc(p)}</span></div>`).join("");
+  $("#endBubble").innerHTML = `<b>${esc(T.retain)}</b>${esc(DATA.recapSay || "")}`;
+}
+function updateTimer(){
+  const ring = $("#ring");
+  $("#ringNum").textContent = state.left;
+  $("#ringFg").style.strokeDasharray = CIRC;
+  $("#ringFg").style.strokeDashoffset = CIRC * (1 - state.left/state.dur);
+  ring.classList.toggle("soon", state.left <= 10 && state.left > 0);
+  ring.classList.toggle("over", state.left === 0);
+  $("#pauseBtn").textContent = (state.running || state.left === 0 || state.revealed) ? T.pause : T.resume;
+  $("#pauseBtn").disabled = state.left === 0 || state.revealed;
+}
+function startTimer(){ stopTimer(); state.left = state.dur; state.running = true; state.timer = setInterval(tick, 1000); updateTimer(); }
+function stopTimer(){ clearInterval(state.timer); state.timer = null; state.running = false; }
+function tick(){
+  if (!state.running) return;
+  state.left = Math.max(0, state.left - 1);
+  if (state.left === 0){ stopTimer(); if (!state.revealed){ $("#bubble").textContent = T.timeup; tone([523,392]); } }
+  updateTimer();
+}
+function togglePause(){
+  if (state.left === 0 || state.revealed) return;
+  state.running = !state.running;
+  if (state.running && !state.timer) state.timer = setInterval(tick, 1000);
+  updateTimer();
+}
+function tone(freqs){
+  if (!state.sound) return;
+  try {
+    const ctx = tone.ctx || (tone.ctx = new (window.AudioContext || window.webkitAudioContext)());
+    freqs.forEach((f, k) => {
+      const o = ctx.createOscillator(), g = ctx.createGain(), t = ctx.currentTime + k*0.16;
+      o.type = "sine"; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.22, t+0.02); g.gain.exponentialRampToValueAtTime(0.0001, t+0.22);
+      o.connect(g).connect(ctx.destination); o.start(t); o.stop(t+0.25);
+    });
+  } catch(e){}
+}
+function burst(){
+  if (reduced) return;
+  const cols = ["#FF8A3D","#7B61FF","#12A89C","#FF5E8A","#FFC83D","#37A047"];
+  for (let k = 0; k < 26; k++){
+    const el = document.createElement("div");
+    el.className = "fall";
+    el.style.left = Math.random()*100 + "vw";
+    el.style.setProperty("--drift", (Math.random()*160 - 80) + "px");
+    el.style.setProperty("--rot", (Math.random()*720 - 360) + "deg");
+    el.style.animationDuration = (1.8 + Math.random()*1.4) + "s";
+    el.style.animationDelay = (Math.random()*0.4) + "s";
+    el.innerHTML = `<svg viewBox="0 0 60 30" width="34" height="20"><path d="M0 15 C12 0 40 -2 60 12 C42 30 14 30 0 15Z" fill="${cols[k % cols.length]}"/></svg>`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 3800);
+  }
+}
+function go(k){
+  state.i = k; state.revealed = false;
+  if (k >= 0 && k < Q.length){ state.visited.add(k); render(); startTimer(); } else render();
+}
+function reveal(){
+  if (state.i < 0 || state.i >= Q.length || state.revealed) return;
+  state.revealed = true; stopTimer(); render(); updateTimer(); burst(); tone([523,659,784]);
+}
+function next(){ if (state.i < Q.length) go(state.i + 1); }
+function prev(){ if (state.i > 0) go(state.i - 1); }
+function advance(){
+  if (state.i < 0) return go(0);
+  if (state.i >= Q.length) return;
+  state.revealed ? next() : reveal();
+}
+function fullscreen(){
+  try { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); } catch(e){}
+}
+$("#startBtn").addEventListener("click", () => go(0));
+$("#revealBtn").addEventListener("click", reveal);
+$("#nextBtn").addEventListener("click", next);
+$("#prevBtn").addEventListener("click", prev);
+$("#pauseBtn").addEventListener("click", togglePause);
+$("#restartBtn").addEventListener("click", () => { if (!state.revealed) startTimer(); });
+["#fsBtn","#fsTop","#fsIntro"].forEach(id => $(id).addEventListener("click", fullscreen));
+function fsLabels(){ const t = document.fullscreenElement ? T.fsExit : T.fs; ["#fsBtn","#fsTop","#fsIntro"].forEach(id => $(id).textContent = t); scheduleFit(); }
+document.addEventListener("fullscreenchange", fsLabels);
+$("#soundBtn").addEventListener("click", e => { state.sound = !state.sound; e.currentTarget.textContent = T.sound(state.sound); });
+$("#againBtn").addEventListener("click", () => { state.visited.clear(); go(-1); });
+$("#backBtn").addEventListener("click", () => go(Q.length - 1));
+document.addEventListener("keydown", e => {
+  if (!$("#printModal").hidden){ if (e.key === "Escape") closePrint(); return; }
+  const onButton = e.target.tagName === "BUTTON";
+  switch (e.key){
+    case "ArrowRight": case "PageDown": e.preventDefault(); advance(); break;
+    case "ArrowLeft": case "PageUp": e.preventDefault(); prev(); break;
+    case " ": case "Enter": if (!onButton){ e.preventDefault(); advance(); } break;
+    case "p": case "P": togglePause(); break;
+    case "r": case "R": if (!state.revealed && state.i >= 0 && state.i < Q.length) startTimer(); break;
+    case "f": case "F": fullscreen(); break;
+  }
+});
+/* ---------- Impression ---------- */
+function answerOf(q){ return q.type === "qcm" ? `${T.letters[q.correct % 3]}. ${q.options[q.correct]}` : q.type === "vf" ? T.tf[q.answer ? 0 : 1] : q.answer; }
+function studentSheet(){
+  const head = `<div class="p-head">${mascotSVG()}<div><h1>${esc(DATA.title)}</h1><p>${esc(T.sub(DATA.subject, DATA.level))}</p></div></div>
+    <div class="p-fields">${T.fields.map(f => `<span>${esc(f)}</span>`).join("")}</div>`;
+  const qs = Q.map((q, k) => {
+    let a = "";
+    if (q.type === "qcm") a = `<div class="p-opts">${q.options.map((o, i) => `<div class="p-opt"><i></i><b style="background:${COLORS[i % 3]}">${T.letters[i % 3]}</b><span>${esc(o)}</span></div>`).join("")}</div>`;
+    else if (q.type === "vf") a = `<div class="p-vf">${T.tf.map(t => `<div class="p-opt"><i></i><span>${esc(t)}</span></div>`).join("")}</div>`;
+    else a = `<div><div>${esc(T.answerLine)}</div><div class="p-line"></div></div>`;
+    return `<div class="p-q">${q.svg}<div><div class="p-text"><span class="p-num">${k+1}</span>${esc(q.text)}</div>${a}</div></div>`;
+  }).join("");
+  return `<section class="p-sheet">${head}${qs}</section>`;
+}
+function keySheet(breakBefore){
+  const rows = Q.map((q, k) => `<tr><td>${k+1}. ${esc(q.text)}</td><td class="ok">${esc(answerOf(q))}</td><td>${esc(q.explain)}</td></tr>`).join("");
+  const recap = (DATA.recap || []).length ? `<h2>${esc(T.recapTitle)}</h2><ul>${DATA.recap.map(r => `<li>${esc(r)}</li>`).join("")}</ul>${DATA.recapSay ? `<p>${esc(DATA.recapSay)}</p>` : ""}` : "";
+  return `<section class="p-sheet p-key ${breakBefore ? "p-break" : ""}"><div class="p-head">${mascotSVG()}<div><h1>${esc(T.keyTitle)} : ${esc(DATA.title)}</h1><p>${esc(T.sub(DATA.subject, DATA.level))}</p></div></div>
+    <table><thead><tr><th>${esc(T.colQ)}</th><th>${esc(T.colA)}</th><th>${esc(T.colR)}</th></tr></thead><tbody>${rows}</tbody></table>${recap}</section>`;
+}
+function openPrint(){ stopTimer(); $("#printModal").hidden = false; $("#printModal .choice").focus(); }
+function closePrint(){ $("#printModal").hidden = true; }
+function doPrint(mode){
+  $("#printArea").innerHTML = mode === "student" ? studentSheet() : mode === "key" ? keySheet(false) : studentSheet() + keySheet(true);
+  closePrint();
+  setTimeout(() => window.print(), 150);
+}
+$("#pmTitle").textContent = T.pmTitle;
+$("#pmCancel").textContent = T.cancel;
+document.querySelectorAll("#printModal .choice").forEach(b => {
+  const [t, d] = T.modes[b.dataset.mode];
+  b.innerHTML = `${esc(t)}<small>${esc(d)}</small>`;
+  b.addEventListener("click", () => doPrint(b.dataset.mode));
+});
+["#printBtn1","#printBtn2"].forEach(id => { $(id).textContent = T.print; $(id).addEventListener("click", openPrint); });
+$("#pmCancel").addEventListener("click", closePrint);
+$("#printModal").addEventListener("click", e => { if (e.target.id === "printModal") closePrint(); });
+
+/* ---------- Ajustement automatique à la taille de l'écran ---------- */
+function overflowing(){
+  if (document.documentElement.scrollHeight > window.innerHeight + 2) return true;
+  return [...document.querySelectorAll(".view:not([hidden]) .right, .view:not([hidden]) .art")].some(el => el.scrollHeight > el.clientHeight + 2);
+}
+function fit(){
+  const root = document.documentElement;
+  root.classList.remove("tall");
+  let fs = 1; root.style.setProperty("--fs", fs);
+  while (overflowing() && fs > 0.6){ fs = Math.round((fs - 0.05)*100)/100; root.style.setProperty("--fs", fs); }
+  if (overflowing()) root.classList.add("tall");   // dernier recours : barre de défilement
+}
+let fitT = null;
+function scheduleFit(){ clearTimeout(fitT); fitT = setTimeout(() => requestAnimationFrame(fit), 60); }
+window.addEventListener("resize", scheduleFit);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(scheduleFit);
+const _render = render;
+render = function(){ _render(); scheduleFit(); };
+
+buildStatic();
+fsLabels();
+render();
+if (location.hash === "#imprimer") openPrint();
+</script>
+</body>
+</html>
